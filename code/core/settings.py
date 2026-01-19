@@ -78,8 +78,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'IntelliClub',      
-        'USER': 'django',          
-        'PASSWORD': 'intelliclub@1234',
+        'USER': 'YOUR_USERNAME_HERE',          
+        'PASSWORD': 'YOUR_PASSWORD_HERE',
         'HOST': '127.0.0.1',                
         'PORT': '3306',
     }
