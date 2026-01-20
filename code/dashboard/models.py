@@ -6,7 +6,7 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 class Alert(models.Model):
     alert_id = models.CharField(db_column='Alert_ID', primary_key=True, max_length=10)  # Field name made lowercase.
@@ -45,39 +45,39 @@ class Clubs(models.Model):
         db_table = 'clubs'
 
 
-# class ClubsEvents(models.Model):
-#     pk = models.CompositePrimaryKey('Club_ID', 'Event_ID')
-#     club_id = models.CharField(db_column='Club_ID', max_length=10)  # Field name made lowercase.
-#     event = models.ForeignKey('Events', models.CASCADE, db_column='Event_ID')  # Field name made lowercase.
-#     role = models.CharField(db_column='Role', max_length=50, blank=True, null=True)  # Field name made lowercase.
-#     budget_share = models.IntegerField(db_column='Budget_share', blank=True, null=True)  # Field name made lowercase.
+class ClubsEvents(models.Model):
+    club_id = models.CharField(db_column='Club_ID', max_length=10, primary_key=True)  # Field name made lowercase.
+    event = models.ForeignKey('Events', models.CASCADE, db_column='Event_ID')  # Field name made lowercase.
+    role = models.CharField(db_column='Role', max_length=50, blank=True, null=True)  # Field name made lowercase.
+    budget_share = models.IntegerField(db_column='Budget_share', blank=True, null=True)  # Field name made lowercase.
 
-#     class Meta:
-#         managed = False
-#         db_table = 'clubs_events'
-
-
-# class ClubsMembers(models.Model):
-#     pk = models.CompositePrimaryKey('Club_ID', 'Student_ID')
-#     club = models.ForeignKey(Clubs, models.CASCADE, db_column='Club_ID')  # Field name made lowercase.
-#     student = models.ForeignKey('Students', models.CASCADE, db_column='Student_ID')  # Field name made lowercase.
-#     role = models.ForeignKey('Roles', models.CASCADE, db_column='Role_ID', blank=True, null=True)  # Field name made lowercase.
-#     joining_date = models.DateTimeField(db_column='Joining_date', blank=True, null=True)  # Field name made lowercase.
-
-#     class Meta:
-#         managed = False
-#         db_table = 'clubs_members'
+    class Meta:
+        managed = False
+        unique_together = (('club_id', 'event'),)
+        db_table = 'clubs_events'
 
 
-# class ClubsRegistration(models.Model):
-#     pk = models.CompositePrimaryKey('Club_ID', 'Student_ID')
-#     club = models.ForeignKey(Clubs, models.CASCADE, db_column='Club_ID')  # Field name made lowercase.
-#     student = models.ForeignKey('Students', models.CASCADE, db_column='Student_ID')  # Field name made lowercase.
-#     payment_status = models.CharField(db_column='Payment_status', max_length=7, blank=True, null=True)  # Field name made lowercase.
+class ClubsMembers(models.Model):
+    club = models.ForeignKey('Clubs', on_delete=models.CASCADE, db_column='Club_ID', primary_key=True)
+    student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID', unique=True)
+    role = models.ForeignKey('Roles', models.CASCADE, db_column='Role_ID', blank=True, null=True)  # Field name made lowercase.
+    joining_date = models.DateTimeField(db_column='Joining_date', blank=True, null=True)  # Field name made lowercase.
 
-#     class Meta:
-#         managed = False
-#         db_table = 'clubs_registration'
+    class Meta:
+        managed = False
+        unique_together = (('club', 'student'),)
+        db_table = 'clubs_members'
+
+
+class ClubsRegistration(models.Model):
+    club = models.ForeignKey(Clubs, models.CASCADE, db_column='Club_ID', primary_key=True)  # Field name made lowercase.
+    student = models.ForeignKey('Students', models.CASCADE, db_column='Student_ID')  # Field name made lowercase.
+    payment_status = models.CharField(db_column='Payment_status', max_length=7, blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        unique_together = (('club', 'student'),)
+        db_table = 'clubs_registration'
 
 
 class EventRegistration(models.Model):
@@ -122,19 +122,19 @@ class Expenses(models.Model):
         db_table = 'expenses'
 
 
-# class Loans(models.Model):
-#     loan_id = models.CharField(db_column='Loan_ID', primary_key=True, max_length=10)  # Field name made lowercase.
-#     asset = models.ForeignKey(Assets, models.CASCADE, db_column='Asset_ID', blank=True, null=True)  # Field name made lowercase.
-#     lender_club = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Lender_Club_ID', blank=True, null=True)  # Field name made lowercase.
-#     lender_student = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Lender_Student_ID', to_field='Student_ID', related_name='loans_lender_student_set', blank=True, null=True)  # Field name made lowercase.
-#     borrower_club = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Borrower_Club_ID', related_name='loans_borrower_club_set', blank=True, null=True)  # Field name made lowercase.
-#     borrower_student = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Borrower_Student_ID', to_field='Student_ID', related_name='loans_borrower_student_set', blank=True, null=True)  # Field name made lowercase.
-#     borrow_date = models.DateTimeField(db_column='Borrow_date', blank=True, null=True)  # Field name made lowercase.
-#     return_date = models.DateTimeField(db_column='return_date',blank=True, null=True)
+class Loans(models.Model):
+    loan_id = models.CharField(db_column='Loan_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    asset = models.ForeignKey(Assets, models.CASCADE, db_column='Asset_ID', blank=True, null=True)  # Field name made lowercase.
+    lender_club = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Lender_Club_ID', blank=True, null=True)  # Field name made lowercase.
+    lender_student = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Lender_Student_ID', to_field='student', related_name='loans_lender_student_set', blank=True, null=True)  # Field name made lowercase.
+    borrower_club = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Borrower_Club_ID', related_name='loans_borrower_club_set', blank=True, null=True)  # Field name made lowercase.
+    borrower_student = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Borrower_Student_ID', to_field='student', related_name='loans_borrower_student_set', blank=True, null=True)  # Field name made lowercase.
+    borrow_date = models.DateTimeField(db_column='Borrow_date', blank=True, null=True)  # Field name made lowercase.
+    return_date = models.DateTimeField(db_column='return_date',blank=True, null=True)
 
-#     class Meta:
-#         managed = False
-#         db_table = 'loans'
+    class Meta:
+        managed = False
+        db_table = 'loans'
 
 
 class Roles(models.Model):
@@ -146,14 +146,14 @@ class Roles(models.Model):
         db_table = 'roles'
 
 
-# class Skills(models.Model):
-#     pk = models.CompositePrimaryKey('Student_ID', 'Skill')
-#     student = models.ForeignKey('Students', models.CASCADE, db_column='Student_ID')  # Field name made lowercase.
-#     skill = models.CharField(db_column='Skill', max_length=255)  # Field name made lowercase.
+class Skills(models.Model):
+    student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID', primary_key=True)
+    skill = models.CharField(db_column='Skill', max_length=50)
 
-#     class Meta:
-#         managed = False
-#         db_table = 'skills'
+    class Meta:
+        managed = False
+        unique_together = (('student', 'skill'),)
+        db_table = 'skills'
 
 
 class Students(models.Model):
@@ -168,11 +168,31 @@ class Students(models.Model):
         db_table = 'students'
 
 
+class UserManager(BaseUserManager):
+    def create_user(self, user_email, password=None):
+        if not user_email:
+            raise ValueError('Users must have an email address')
+        user = self.model(user_email=self.normalize_email(user_email))
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, user_email, password=None):
+        user = self.create_user(user_email, password=password)
+        user.is_admin = True
+        user.save(using=self._db)
+        return user
+
+
 class Users(AbstractBaseUser):
     user_email = models.EmailField(db_column='User_Email', primary_key=True, max_length=50)  # Field name made lowercase.
     password = models.CharField(db_column='Password', max_length=255, blank=True, null=True)
     last_login = models.DateTimeField(db_column='last_login', blank=True, null=True)  # Field name made lowercase.
     account_created = models.DateTimeField(db_column='Account_Created',auto_now_add=True, blank=True, null=True)  # Field name made lowercase.
+    objects = UserManager()
+    USERNAME_FIELD = 'user_email'
+    REQUIRED_FIELDS = []
+
 
     class Meta:
         managed = False

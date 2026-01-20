@@ -78,13 +78,20 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'IntelliClub',      
-        'USER': 'YOUR_USERNAME_HERE',          
-        'PASSWORD': 'YOUR_PASSWORD_HERE',
+        'USER': 'django',          
+        'PASSWORD': 'intelliclub@1234',
         'HOST': '127.0.0.1',                
         'PORT': '3306',
     }
 }
 
+AUTH_USER_MODEL = 'dashboard.Users'
+
+
+AUTHENTICATION_BACKENDS = [
+    'dashboard.backends.EmailBackend', # Make sure this path is correct
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -103,6 +110,9 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+LOGIN_REDIRECT_URL = 'home'
+LOGIN_URL = 'login'
 
 
 # Internationalization

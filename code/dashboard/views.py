@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.db import transaction
-from .models import Users, Students
+from .models import Clubs, Users, Students,Clubs, ClubsMembers, Events
+from django.contrib.auth.decorators import login_required
 
 def login_view(request):
     if request.method == "POST":
@@ -49,3 +50,50 @@ def register_view(request):
             return redirect('login') # Success!
         except Exception as e:
             return render(request, 'dashboard/login.html', {'error': f'Registration failed: {e}'})
+        
+@login_required
+def home_view(request):
+    # 1. Fetch Events from DB
+    raw_events = Events.objects.all().order_by('event_date')[:3]
+    
+    icon_map = {
+        'Workshop': 'bi-mortarboard',
+        'Competition': 'bi-trophy',
+        'Talk': 'bi-megaphone',
+        'Seminar': 'bi-lightbulb',
+    }
+
+    for event in raw_events:
+        event.display_icon = icon_map.get(event.event_type, 'bi-star')
+
+    # 2. FIX: Connect User to Student using the 'email' field
+    try:
+        # Based on your error, the field is 'email', not 'student_email'
+        current_student = Students.objects.get(email=request.user.user_email)
+        my_clubs = ClubsMembers.objects.filter(student=current_student)
+    except Students.DoesNotExist:
+        my_clubs = []
+
+    context = {
+        'events': raw_events,
+        'my_clubs': my_clubs,
+    }
+    return render(request, 'dashboard/home.html', context)
+
+@login_required
+def all_clubs_view(request):
+    # 1. Fetch all clubs for the main table
+    clubs = Clubs.objects.all()
+    
+    # 2. FIX: Connect User to Student for the sidebar
+    try:
+        # Use 'email' as identified in your previous FieldError
+        current_student = Students.objects.get(email=request.user.user_email)
+        my_clubs = ClubsMembers.objects.filter(student=current_student)
+    except Students.DoesNotExist:
+        my_clubs = []
+
+    return render(request, 'dashboard/all_clubs.html', {
+        'clubs': clubs,
+        'my_clubs': my_clubs
+    })
