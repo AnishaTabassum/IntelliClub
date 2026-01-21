@@ -1,5 +1,4 @@
 
-
 CREATE TABLE students (
     Student_ID VARCHAR(10) PRIMARY KEY,
     Name VARCHAR(50),
@@ -8,9 +7,9 @@ CREATE TABLE students (
     Personality_type VARCHAR(50)
 );
 CREATE TABLE Skills (
+	Skill_ID INT AUTO_INCREMENT PRIMARY KEY,
     Student_ID VARCHAR(10),
-    Skill VARCHAR(255),
-    PRIMARY KEY (student_id , skill)
+    Skill VARCHAR(255)
 );
 CREATE TABLE Users (
     User_Email VARCHAR(50) PRIMARY KEY,
@@ -18,9 +17,9 @@ CREATE TABLE Users (
     Account_Created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE Event_Registration (
-    Registration_ID VARCHAR(10) PRIMARY KEY,
+    Registration_ID INT AUTO_INCREMENT PRIMARY KEY,
     Student_ID VARCHAR(10),
-    Event_ID VARCHAR(10),
+    Event_ID int,
     Attendance_code BLOB,
     Attendance ENUM('Absent', 'Present') DEFAULT 'Absent',
     Attendance_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -29,7 +28,7 @@ CREATE TABLE Event_Registration (
     Payment_status ENUM('Unpaid', 'Success') DEFAULT 'Unpaid'
 );
 CREATE TABLE Events (
-    Event_ID VARCHAR(10) PRIMARY KEY,
+    Event_ID INT AUTO_INCREMENT PRIMARY KEY,
     Event_Name VARCHAR(50),
     Event_Date DATETIME,
     Event_details VARCHAR(255),
@@ -39,20 +38,20 @@ CREATE TABLE Events (
     Budget INT
 );
 CREATE TABLE Volunteers (
-    Volunteer_ID VARCHAR(10) PRIMARY KEY,
-    Event_ID VARCHAR(10),
+    Volunteer_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Event_ID Int,
     Student_ID VARCHAR(10),
     Role VARCHAR(255),
     Budget_allocated INT
 );
 CREATE TABLE Expenses (
-    Expenses_ID VARCHAR(10) PRIMARY KEY,
-    Volunteer_ID VARCHAR(10),
+    Expenses_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Volunteer_ID INT,
     Description VARCHAR(255),
     Amount INT
 );
 CREATE TABLE Clubs (
-    Club_ID VARCHAR(10) PRIMARY KEY,
+    Club_ID INT AUTO_INCREMENT PRIMARY KEY,
     Club_Name VARCHAR(50),
     Club_Funds INT,
     Reg_fee INT,
@@ -62,48 +61,42 @@ CREATE TABLE Clubs (
     Founded_Year YEAR
 );
 CREATE TABLE Clubs_Members (
-    Club_ID VARCHAR(10),
+	Member_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Club_ID INT,
     Student_ID VARCHAR(10),
-    Role_ID VARCHAR(10),
-    Joining_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (Club_Id , Student_ID)
-);
-CREATE TABLE Roles (
-    Role_ID VARCHAR(10) PRIMARY KEY,
-    Role VARCHAR(50) NOT NULL
+    Role VARCHAR(50),
+    Joining_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE Clubs_Registration (
-    Club_ID VARCHAR(10),
+	reg_id INT AUTO_INCREMENT PRIMARY KEY,
+    Club_ID int,
     Student_ID VARCHAR(10),
-    Payment_status ENUM('Unpaid', 'Success') DEFAULT 'Unpaid',
-    PRIMARY KEY (Club_Id , Student_ID)
+    Payment_status ENUM('Unpaid', 'Success') DEFAULT 'Unpaid'
 );
 CREATE TABLE Clubs_Events (
-    Club_ID VARCHAR(10),
-    Event_ID VARCHAR(10),
+	id INT AUTO_INCREMENT PRIMARY KEY,
+    Club_ID INT,
+    Event_ID INT,
     Role VARCHAR(50),
-    Budget_share INT,
-    PRIMARY KEY (Club_Id , Event_ID)
+    Budget_share INT
 );
 CREATE TABLE Assets (
-    Asset_ID VARCHAR(10) PRIMARY KEY,
-    Club_ID VARCHAR(10),
+    Asset_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Club_ID Int,
     Asset_Name VARCHAR(50),
     Category VARCHAR(50)
 );
 CREATE TABLE Loans (
-    Loan_ID VARCHAR(10) PRIMARY KEY,
-    Asset_ID VARCHAR(10),
-    Lender_Club_ID VARCHAR(10),
-    Lender_Student_ID VARCHAR(10),
-    Borrower_Club_ID VARCHAR(10),
-    Borrower_Student_ID VARCHAR(10),
+    Loan_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Asset_ID INT,
+    Lender_Member_ID INT,
+    Borrower_Member_ID int,
     Borrow_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     return_date TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
 CREATE TABLE Alert (
-    Alert_ID VARCHAR(10) PRIMARY KEY,
-    Club_ID VARCHAR(10),
+    Alert_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Club_ID Int,
     Message VARCHAR(255),
     Created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ); 
@@ -142,6 +135,10 @@ Alter table Clubs_Events
 add constraint fk_Clubs_Events_events
 foreign key(event_id) references events(event_id) on delete cascade;
 
+Alter table Clubs_Events
+add constraint fk_Clubs_Events_Clubs
+foreign key(club_id) references clubs(club_id) on delete cascade;
+
 Alter table Alert
 add constraint fk_Alert_club
 foreign key(Club_ID) references Clubs(Club_ID) on delete cascade;
@@ -153,10 +150,6 @@ foreign key (asset_id) references assets(Asset_id) on delete cascade;
 alter table clubs_members
 add constraint fk_club_mem_clubs
 foreign key(Club_ID) references clubs(Club_ID) on delete cascade;
-
-alter table clubs_members
-add constraint fk_club_mem_role
-foreign key(Role_ID) references roles(Role_ID) on delete cascade;
 
 alter table clubs_members
 add constraint fk_club_mem_students
@@ -176,11 +169,11 @@ foreign key(Club_ID) references clubs(Club_ID) on delete cascade;
 
 alter table loans
 add constraint fk_loan_lender_club_member
-foreign key(lender_club_id,lender_student_id) references clubs_members(Club_id,Student_id) on delete set null;
+foreign key(lender_Member_ID) references clubs_members(Member_ID) on delete set null;
 
 alter table loans
 add constraint fk_loan_borrower_club_member
-foreign key(borrower_club_id,borrower_student_id) references clubs_members(Club_id,Student_id) on delete set null;
+foreign key(borrower_member_id) references clubs_members(Member_ID) on delete set null;
 
 ALTER TABLE Users ADD COLUMN last_login DATETIME NULL;
 
