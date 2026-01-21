@@ -46,7 +46,7 @@ class Clubs(models.Model):
 
 
 class ClubsEvents(models.Model):
-    club_id = models.CharField(db_column='Club_ID', max_length=10, primary_key=True)  # Field name made lowercase.
+    club_id = models.CharField(db_column='Club_ID', max_length=10)  # Field name made lowercase.
     event = models.ForeignKey('Events', models.CASCADE, db_column='Event_ID')  # Field name made lowercase.
     role = models.CharField(db_column='Role', max_length=50, blank=True, null=True)  # Field name made lowercase.
     budget_share = models.IntegerField(db_column='Budget_share', blank=True, null=True)  # Field name made lowercase.
@@ -58,25 +58,26 @@ class ClubsEvents(models.Model):
 
 
 class ClubsMembers(models.Model):
-    club = models.ForeignKey('Clubs', on_delete=models.CASCADE, db_column='Club_ID', primary_key=True)
-    student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID', unique=True)
-    role = models.ForeignKey('Roles', models.CASCADE, db_column='Role_ID', blank=True, null=True)  # Field name made lowercase.
-    joining_date = models.DateTimeField(db_column='Joining_date', blank=True, null=True)  # Field name made lowercase.
+    # This line tells Django to use Member_ID instead of 'id'
+    member_id = models.AutoField(db_column='Member_ID', primary_key=True)
+    club = models.ForeignKey('Clubs', on_delete=models.CASCADE, db_column='Club_ID')
+    student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID')
+    role = models.CharField(db_column='Role', max_length=50)
+    joining_date = models.DateTimeField(db_column='Joining_date', auto_now_add=True)
 
     class Meta:
         managed = False
-        unique_together = (('club', 'student'),)
         db_table = 'clubs_members'
 
-
 class ClubsRegistration(models.Model):
-    club = models.ForeignKey(Clubs, models.CASCADE, db_column='Club_ID', primary_key=True)  # Field name made lowercase.
-    student = models.ForeignKey('Students', models.CASCADE, db_column='Student_ID')  # Field name made lowercase.
-    payment_status = models.CharField(db_column='Payment_status', max_length=7, blank=True, null=True)  # Field name made lowercase.
+    # Matches reg_id INT AUTO_INCREMENT PRIMARY KEY
+    reg_id = models.AutoField(db_column='reg_id', primary_key=True)
+    club = models.ForeignKey('Clubs', on_delete=models.CASCADE, db_column='Club_ID')
+    student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID')
+    payment_status = models.CharField(db_column='Payment_status', max_length=10)
 
     class Meta:
         managed = False
-        unique_together = (('club', 'student'),)
         db_table = 'clubs_registration'
 
 
@@ -123,14 +124,27 @@ class Expenses(models.Model):
 
 
 class Loans(models.Model):
-    loan_id = models.CharField(db_column='Loan_ID', primary_key=True, max_length=10)  # Field name made lowercase.
-    asset = models.ForeignKey(Assets, models.CASCADE, db_column='Asset_ID', blank=True, null=True)  # Field name made lowercase.
-    lender_club = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Lender_Club_ID', blank=True, null=True)  # Field name made lowercase.
-    lender_student = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Lender_Student_ID', to_field='student', related_name='loans_lender_student_set', blank=True, null=True)  # Field name made lowercase.
-    borrower_club = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Borrower_Club_ID', related_name='loans_borrower_club_set', blank=True, null=True)  # Field name made lowercase.
-    borrower_student = models.ForeignKey(ClubsMembers, models.SET_NULL, db_column='Borrower_Student_ID', to_field='student', related_name='loans_borrower_student_set', blank=True, null=True)  # Field name made lowercase.
-    borrow_date = models.DateTimeField(db_column='Borrow_date', blank=True, null=True)  # Field name made lowercase.
-    return_date = models.DateTimeField(db_column='return_date',blank=True, null=True)
+    # You can now safely uncomment this!
+    loan_id = models.AutoField(db_column='Loan_ID', primary_key=True)
+    asset = models.ForeignKey('Assets', on_delete=models.CASCADE, db_column='Asset_ID')
+    
+    # Points to the unique Member_ID in ClubsMembers
+    lender_member = models.ForeignKey(
+        'ClubsMembers', 
+        on_delete=models.SET_NULL, 
+        db_column='Lender_Member_ID', 
+        related_name='loans_as_lender', 
+        null=True
+    )
+    borrower_member = models.ForeignKey(
+        'ClubsMembers', 
+        on_delete=models.SET_NULL, 
+        db_column='Borrower_Member_ID', 
+        related_name='loans_as_borrower', 
+        null=True
+    )
+    borrow_date = models.DateTimeField(db_column='Borrow_date', auto_now_add=True)
+    return_date = models.DateTimeField(db_column='return_date', null=True, blank=True)
 
     class Meta:
         managed = False
