@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.db import transaction
+from django.db.models import Q
 from .models import Clubs, ClubsEvents, Users, Students,Clubs, ClubsMembers, Events,EventRegistration, ClubsRegistration, Volunteers
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -131,6 +132,7 @@ def join_club_request(request, club_id):
         # 1. Get student and club using the new ID names
         student = Students.objects.get(email=request.user.user_email)
         club = Clubs.objects.get(club_id=club_id)
+        
 
         # 2. Check if already a member
         if ClubsMembers.objects.filter(student=student, club=club).exists():
@@ -165,12 +167,12 @@ def club_dashboard_view(request, club_id):
     membership = get_object_or_404(ClubsMembers, student=student, club=club)
     my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
     
-    # 2. Fix the FieldError: Get events linked to this club via the bridge table
-    # We filter ClubsEvents by the club_id string in your model
+    # 2. Get events linked to this club
     event_links = ClubsEvents.objects.filter(club_id=club.club_id).select_related('event')
-    
-    # 3. Extract the actual 'Events' objects for the template
     club_events = [link.event for link in event_links]
+    
+    # Get IDs of these events to filter registrations
+    club_event_ids = [link.event.event_id for link in event_links]
     
     all_members = ClubsMembers.objects.filter(club=club).select_related('student')
 
@@ -182,13 +184,33 @@ def club_dashboard_view(request, club_id):
         'role': membership.role,
     }
 
-    # 4. Redirect based on Executive vs Member
+    # 4. Executive Specific Logic
     if membership.role in ['President', 'Vice President', 'Executive']:
+        # Club Membership Requests (already there)
         context['pending_requests'] = ClubsRegistration.objects.filter(club=club)
+        
+        # NEW: Event Registration Requests
+        # We filter for 'Unpaid' status which represents a new request
+        context['event_reg_requests'] = EventRegistration.objects.filter(
+            event_id__in=club_event_ids, 
+            payment_status='Unpaid'
+        ).select_related('student', 'event')
+        
         return render(request, 'dashboard/exec_dashboard.html', context)
     else:
-        # Ensure this file is saved in templates/dashboard/member_view.html
         return render(request, 'dashboard/members_view.html', context)
+    
+@login_required
+def approve_event_registration(request, registration_id):
+    registration = get_object_or_404(EventRegistration, registration_id=registration_id)
+    
+    if request.method == "POST":
+        # Use 'Success' to match your MySQL ENUM exactly
+        registration.payment_status = 'Success'
+        registration.save()
+        
+    # FIX: Redirect to 'club_dashboard', not 'club_event_manager'
+    return redirect('club_dashboard', club_id=registration.event.club_id)
     
 @login_required
 def approve_member(request, reg_id):
@@ -310,26 +332,38 @@ def create_event_page(request, club_id):
 
 @login_required
 def event_detail_view(request, event_id):
+    # Fetch the event or return 404
     event = get_object_or_404(Events, event_id=event_id)
     student = Students.objects.get(email=request.user.user_email)
+
+    # 1. Fetch all involvements from the junction table
+    club_involvements = ClubsEvents.objects.filter(event=event)
     
-    # REQUIRED: Fetch clubs for the sidebar
-    my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
+    # 2. Separate them into Host and Partners
+    hosting_clubs = []
+    partnered_clubs = []
     
-    # Check if user is already registered for either role
-    is_registered = EventRegistration.objects.filter(student=student, event=event).exists()
+    for involvement in club_involvements:
+        # Fetch the actual Club object using the ID string
+        club_obj = Clubs.objects.filter(club_id=involvement.club_id).first()
+        if club_obj:
+            if involvement.role == 'Host':
+                hosting_clubs.append(club_obj)
+            else:
+                partnered_clubs.append(club_obj)
+    # Fetch the registration object to check Payment_status
+    reg_object = EventRegistration.objects.filter(student=student, event=event).first()
+    is_registered = reg_object is not None
     is_volunteer = Volunteers.objects.filter(student=student, event=event).exists()
 
     if request.method == "POST":
         action = request.POST.get('action')
-        
         if action == 'attend' and not is_registered:
             EventRegistration.objects.create(
                 student=student,
                 event=event,
-                attendance_code=None,
-                attendance='Absent',    
-                payment_status='Unpaid'
+                payment_status='Unpaid', # This initiates the admin request
+                attendance='Absent'
             )
             return redirect('event_detail', event_id=event_id)
             
@@ -342,8 +376,49 @@ def event_detail_view(request, event_id):
             return redirect('event_detail', event_id=event_id)
 
     return render(request, 'dashboard/event_detail.html', {
-        'event': event,
-        'my_clubs': my_clubs,
-        'is_registered': is_registered,
-        'is_volunteer': is_volunteer,
+    'event': event,
+    'hosting_clubs': hosting_clubs,
+    'partnered_clubs': partnered_clubs,
+    'reg_object': EventRegistration.objects.filter(student=student, event=event).first(),
+    'is_registered': EventRegistration.objects.filter(student=student, event=event).exists(),
+    'is_volunteer': Volunteers.objects.filter(student=student, event=event).exists(),
     })
+
+@login_required
+def all_events_view(request):
+    search_query = request.GET.get('search', '')
+    
+    # Base Queryset
+    events = Events.objects.all().order_by('event_date')
+    
+    # Apply Search Filter
+    if search_query:
+        events = events.filter(
+            Q(event_name__icontains=search_query) |
+            Q(event_type__icontains=search_query) |
+            Q(venue__icontains=search_query)
+        )
+    
+    # Keep sidebar clubs populated
+    student = Students.objects.get(email=request.user.user_email)
+    my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
+
+    return render(request, 'dashboard/all_events.html', {
+        'all_events': events,
+        'my_clubs': my_clubs
+    })
+
+@login_required
+def approve_event_registration(request, registration_id):
+    # Fetch the specific registration
+    reg = get_object_or_404(EventRegistration, registration_id=registration_id)
+    
+    if request.method == "POST":
+        # Use 'Success' to strictly match your SQL ENUM
+        reg.payment_status = 'Success' 
+        reg.save()
+        
+    # FIX: Redirect back to the dashboard using the club's ID
+    # We get the club_id from the ClubsEvents entry linked to this event
+    club_link = ClubsEvents.objects.filter(event=reg.event).first()
+    return redirect('club_dashboard', club_id=club_link.club_id)

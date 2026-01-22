@@ -16,4 +16,6 @@ urlpatterns = [
     path('club/dashboard/<str:club_id>/', views.club_dashboard_view, name='exec_dashboard'),
     path('club/<str:club_id>/create-event/', views.create_event_page, name='create_event_page'),
     path('event/<int:event_id>/', views.event_detail_view, name='event_detail'),
+    path('events/', views.all_events_view, name='all_events'),
+    path('approve-event-reg/<int:registration_id>/', views.approve_event_registration, name='approve_event_reg'),
 ]

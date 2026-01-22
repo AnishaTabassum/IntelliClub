@@ -70,7 +70,6 @@ class ClubsMembers(models.Model):
         db_table = 'clubs_members'
 
 class ClubsRegistration(models.Model):
-    # Matches reg_id INT AUTO_INCREMENT PRIMARY KEY
     reg_id = models.AutoField(db_column='reg_id', primary_key=True)
     club = models.ForeignKey('Clubs', on_delete=models.CASCADE, db_column='Club_ID')
     student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID')
