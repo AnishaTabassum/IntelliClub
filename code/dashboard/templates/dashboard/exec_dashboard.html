@@ -5,46 +5,136 @@
   </h2>
   <p class="badge bg-primary rounded-pill">Role: {{ role }}</p>
 </div>
+<div
+  class="card border-0 shadow-sm p-4 mb-4"
+  style="border-radius: 20px; background: #f8f9fa"
+>
+  <div class="d-flex justify-content-between align-items-center">
+    <div>
+      <h5 class="fw-bold mb-1">Recruitment Status</h5>
+      <p class="text-muted small mb-0">
+        Currently:
+        <span
+          class="fw-bold {% if club.reg_open %}text-success{% else %}text-danger{% endif %}"
+        >
+          {% if club.reg_open %}OPEN{% else %}CLOSED{% endif %}
+        </span>
+      </p>
+    </div>
 
-<div class="card border-0 shadow-lg p-4 mb-5" style="border-radius: 24px">
-  <h4 class="fw-bold mb-4">Pending Membership Requests</h4>
-  <table class="table table-hover align-middle">
-    <thead class="text-muted small">
-      <tr>
-        <th>Student Name</th>
-        <th>Email</th>
-        <th class="text-end">Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for req in pending_requests %}
-      <tr>
-        <td>{{ req.student.name }}</td>
-        <td>{{ req.student.email }}</td>
-        <td class="text-end">
-          <form
-            action="{% url 'approve_member' req.registration_id %}"
-            method="post"
-            style="display: inline"
-          >
-            {% csrf_token %}
-            <button class="btn btn-success btn-sm rounded-pill px-3">
-              Approve
-            </button>
-          </form>
-          <button class="btn btn-outline-danger btn-sm rounded-pill px-3">
-            Decline
-          </button>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="3" class="text-center text-muted py-4">
-          No pending requests.
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <form action="{% url 'toggle_registration' club.club_id %}" method="POST">
+      {% csrf_token %}
+      <button
+        type="submit"
+        class="btn {% if club.reg_open %}btn-outline-danger{% else %}btn-success{% endif %} rounded-pill px-4"
+      >
+        {% if club.reg_open %}Close Registration{% else %}Open Registration{%
+        endif %}
+      </button>
+    </form>
+  </div>
+</div>
+<div class="card border-0 shadow-sm p-4" style="border-radius: 20px">
+  <h5 class="fw-bold mb-4">Pending Membership Requests</h5>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr class="text-muted small text-uppercase" style="letter-spacing: 1px">
+          <th>Student Name</th>
+          <th>Email</th>
+          <th>Payment Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pending in pending_requests %}
+        <tr>
+          <td>
+            <div class="fw-bold text-dark">{{ pending.student.name }}</div>
+          </td>
+          <td class="text-muted">{{ pending.student.email }}</td>
+          <td>
+            <span
+              class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3"
+            >
+              {{ pending.payment_status }}
+            </span>
+          </td>
+          <td class="text-end">
+            <form
+              action="{% url 'approve_member' pending.reg_id %}"
+              method="POST"
+              class="d-inline"
+            >
+              {% csrf_token %}
+              <button
+                type="submit"
+                class="btn btn-success btn-sm rounded-pill px-3 me-2 fw-bold"
+              >
+                Approve
+              </button>
+            </form>
+
+            <form
+              action="{% url 'reject_member' pending.reg_id %}"
+              method="POST"
+              class="d-inline"
+            >
+              {% csrf_token %}
+              <button
+                type="submit"
+                class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold"
+              >
+                Reject
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center py-5">
+            <i
+              class="bi bi-person-check text-muted mb-2"
+              style="font-size: 2rem"
+            ></i>
+            <p class="text-muted mb-0">No pending requests at the moment.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card border-0 shadow-sm p-4 mt-4" style="border-radius: 20px">
+    <h5 class="fw-bold mb-4">Current Members</h5>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr class="text-muted small text-uppercase">
+            <th>Member Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th class="text-end">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mem in all_members %}
+          <tr>
+            <td><span class="fw-bold">{{ mem.student.name }}</span></td>
+            <td class="text-muted">{{ mem.student.email }}</td>
+            <td>
+              <span
+                class="badge {% if mem.role == 'President' %}bg-primary{% else %}bg-secondary{% endif %} rounded-pill"
+              >
+                {{ mem.role }}
+              </span>
+            </td>
+            <td class="text-end text-success small fw-bold">Active</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}

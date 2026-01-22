@@ -50,6 +50,14 @@
             <i class="bi bi-clock-history me-2"></i> Requested
           </span>
 
+          {% elif not club.reg_open %}
+          <button
+            class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm opacity-75"
+            disabled
+          >
+            <i class="bi bi-x-circle me-1"></i> Closed
+          </button>
+
           {% else %}
           <form
             action="{% url 'join_club' club.club_id %}"

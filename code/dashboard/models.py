@@ -9,7 +9,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 class Alert(models.Model):
-    alert_id = models.CharField(db_column='Alert_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    alert_id = models.AutoField(db_column='Alert_ID', primary_key=True)  # Field name made lowercase.
     club = models.ForeignKey('Clubs', models.CASCADE, db_column='Club_ID', blank=True, null=True)  # Field name made lowercase.
     message = models.CharField(db_column='Message', max_length=255, blank=True, null=True)  # Field name made lowercase.
     created_at = models.DateTimeField(db_column='Created_at', blank=True, null=True)  # Field name made lowercase.
@@ -20,7 +20,7 @@ class Alert(models.Model):
 
 
 class Assets(models.Model):
-    asset_id = models.CharField(db_column='Asset_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    asset_id = models.AutoField(db_column='Asset_ID', primary_key=True)  # Field name made lowercase.
     club = models.ForeignKey('Clubs', models.CASCADE, db_column='Club_ID', blank=True, null=True)  # Field name made lowercase.
     asset_name = models.CharField(db_column='Asset_Name', max_length=50, blank=True, null=True)  # Field name made lowercase.
     category = models.CharField(db_column='Category', max_length=50, blank=True, null=True)  # Field name made lowercase.
@@ -31,7 +31,7 @@ class Assets(models.Model):
 
 
 class Clubs(models.Model):
-    club_id = models.CharField(db_column='Club_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    club_id = models.AutoField(db_column='club_id', primary_key=True)  # Field name made lowercase.
     club_name = models.CharField(db_column='Club_Name', max_length=50, blank=True, null=True)  # Field name made lowercase.
     club_funds = models.IntegerField(db_column='Club_Funds', blank=True, null=True)  # Field name made lowercase.
     reg_fee = models.IntegerField(db_column='Reg_fee', blank=True, null=True)  # Field name made lowercase.
@@ -39,6 +39,7 @@ class Clubs(models.Model):
     advisor_email = models.CharField(db_column='Advisor_Email', max_length=50, blank=True, null=True)  # Field name made lowercase.
     advisor_initial = models.CharField(db_column='Advisor_Initial', max_length=50, blank=True, null=True)  # Field name made lowercase.
     founded_year = models.TextField(db_column='Founded_Year', blank=True, null=True)  # Field name made lowercase. This field type is a guess.
+    reg_open = models.BooleanField(db_column='reg_open', default=True)
 
     class Meta:
         managed = False
@@ -46,6 +47,7 @@ class Clubs(models.Model):
 
 
 class ClubsEvents(models.Model):
+    club_event_id = models.AutoField(db_column='id', primary_key=True)  # Field name made lowercase.
     club_id = models.CharField(db_column='Club_ID', max_length=10)  # Field name made lowercase.
     event = models.ForeignKey('Events', models.CASCADE, db_column='Event_ID')  # Field name made lowercase.
     role = models.CharField(db_column='Role', max_length=50, blank=True, null=True)  # Field name made lowercase.
@@ -53,12 +55,10 @@ class ClubsEvents(models.Model):
 
     class Meta:
         managed = False
-        unique_together = (('club_id', 'event'),)
         db_table = 'clubs_events'
 
 
 class ClubsMembers(models.Model):
-    # This line tells Django to use Member_ID instead of 'id'
     member_id = models.AutoField(db_column='Member_ID', primary_key=True)
     club = models.ForeignKey('Clubs', on_delete=models.CASCADE, db_column='Club_ID')
     student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID')
@@ -82,7 +82,7 @@ class ClubsRegistration(models.Model):
 
 
 class EventRegistration(models.Model):
-    registration_id = models.CharField(db_column='Registration_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    registration_id = models.AutoField(db_column='Registration_ID', primary_key=True)  # Field name made lowercase.
     student = models.ForeignKey('Students', models.CASCADE, db_column='Student_ID', blank=True, null=True)  # Field name made lowercase.
     event = models.ForeignKey('Events', models.CASCADE, db_column='Event_ID', blank=True, null=True)  # Field name made lowercase.
     attendance_code = models.TextField(db_column='Attendance_code', blank=True, null=True)  # Field name made lowercase.
@@ -98,7 +98,7 @@ class EventRegistration(models.Model):
 
 
 class Events(models.Model):
-    event_id = models.CharField(db_column='Event_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    event_id = models.AutoField(db_column='Event_ID', primary_key=True)  # Field name made lowercase.
     event_name = models.CharField(db_column='Event_Name', max_length=50, blank=True, null=True)  # Field name made lowercase.
     event_date = models.DateTimeField(db_column='Event_Date', blank=True, null=True)  # Field name made lowercase.
     event_details = models.CharField(db_column='Event_details', max_length=255, blank=True, null=True)  # Field name made lowercase.
@@ -113,7 +113,7 @@ class Events(models.Model):
 
 
 class Expenses(models.Model):
-    expenses_id = models.CharField(db_column='Expenses_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    expenses_id = models.AutoField(db_column='Expenses_ID', primary_key=True)  # Field name made lowercase.
     volunteer = models.ForeignKey('Volunteers', models.SET_NULL, db_column='Volunteer_ID', blank=True, null=True)  # Field name made lowercase.
     description = models.CharField(db_column='Description', max_length=255, blank=True, null=True)  # Field name made lowercase.
     amount = models.IntegerField(db_column='Amount', blank=True, null=True)  # Field name made lowercase.
@@ -151,22 +151,13 @@ class Loans(models.Model):
         db_table = 'loans'
 
 
-class Roles(models.Model):
-    role_id = models.CharField(db_column='Role_ID', primary_key=True, max_length=10)  # Field name made lowercase.
-    role = models.CharField(db_column='Role', max_length=50)  # Field name made lowercase.
-
-    class Meta:
-        managed = False
-        db_table = 'roles'
-
-
 class Skills(models.Model):
-    student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID', primary_key=True)
+    skill_id = models.AutoField(db_column='Skill_ID', primary_key=True)
+    student = models.ForeignKey('Students', on_delete=models.CASCADE, db_column='Student_ID')
     skill = models.CharField(db_column='Skill', max_length=50)
 
     class Meta:
         managed = False
-        unique_together = (('student', 'skill'),)
         db_table = 'skills'
 
 
@@ -214,7 +205,7 @@ class Users(AbstractBaseUser):
 
 
 class Volunteers(models.Model):
-    volunteer_id = models.CharField(db_column='Volunteer_ID', primary_key=True, max_length=10)  # Field name made lowercase.
+    volunteer_id = models.AutoField(db_column='Volunteer_ID', primary_key=True)  # Field name made lowercase.
     event = models.ForeignKey(Events, models.CASCADE, db_column='Event_ID', blank=True, null=True)  # Field name made lowercase.
     student = models.ForeignKey(Students, models.CASCADE, db_column='Student_ID', blank=True, null=True)  # Field name made lowercase.
     role = models.CharField(db_column='Role', max_length=255, blank=True, null=True)  # Field name made lowercase.

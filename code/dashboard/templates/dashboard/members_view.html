@@ -1,0 +1,115 @@
+{% extends 'dashboard/base.html' %} {% block content %}
+<div class="container-fluid py-4">
+  <div
+    class="card border-0 shadow-sm p-4 mb-4"
+    style="
+      border-radius: 20px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    "
+  >
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <span
+          class="badge bg-success-subtle text-success rounded-pill px-3 mb-2"
+          >Active Member</span
+        >
+        <h2 class="fw-bold text-dark mb-1">{{ club.club_name }}</h2>
+        <p class="text-muted">
+          <i class="bi bi-geo-alt me-2"></i>University Main Campus
+        </p>
+      </div>
+      <div class="text-end">
+        <p class="small text-muted mb-0">Club Advisor</p>
+        <p class="fw-bold mb-0">{{ club.contact_advisor }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm p-4" style="border-radius: 20px">
+    <h5 class="fw-bold mb-4">Club Members</h5>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr class="text-muted small text-uppercase">
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mem in all_members %}
+          <tr>
+            <td><span class="fw-bold">{{ mem.student.name }}</span></td>
+            <td class="text-muted">{{ mem.student.email }}</td>
+            <td>
+              <span
+                class="badge {% if mem.role != 'General Member' %}bg-warning-subtle text-warning-emphasis{% else %}bg-light text-dark{% endif %} rounded-pill"
+              >
+                {{ mem.role }}
+              </span>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-center text-muted">
+              No members listed.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm p-4" style="border-radius: 20px">
+        <h5 class="fw-bold mb-4">
+          <i class="bi bi-calendar-event me-2 text-primary"></i>Upcoming Events
+        </h5>
+
+        <div class="row">
+          {% for event in club_events %}
+          <div class="col-md-6 col-lg-4 mb-3">
+            <div class="p-3 border rounded-4 bg-light position-relative h-100">
+              <div class="d-flex align-items-center mb-2">
+                <div
+                  class="bg-white rounded-3 p-2 text-center shadow-sm me-3"
+                  style="min-width: 60px"
+                >
+                  <span class="d-block small text-uppercase text-muted fw-bold"
+                    >{{ event.event_date|date:"M" }}</span
+                  >
+                  <span class="d-block h4 mb-0 fw-bold"
+                    >{{ event.event_date|date:"d" }}</span
+                  >
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-0">{{ event.event_name }}</h6>
+                  <span class="small text-muted"
+                    ><i class="bi bi-clock me-1"></i>{{ event.event_time
+                    }}</span
+                  >
+                </div>
+              </div>
+              <p class="small text-muted mb-0 mt-2 text-truncate-2">
+                {{ event.description }}
+              </p>
+              <hr class="my-2 opacity-25" />
+              <div class="small fw-bold text-primary">
+                <i class="bi bi-geo-alt me-1"></i>{{ event.location }}
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12 text-center py-4">
+            <p class="text-muted italic">
+              No upcoming events scheduled for this club yet.
+            </p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

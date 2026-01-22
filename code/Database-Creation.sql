@@ -176,4 +176,14 @@ add constraint fk_loan_borrower_club_member
 foreign key(borrower_member_id) references clubs_members(Member_ID) on delete set null;
 
 ALTER TABLE Users ADD COLUMN last_login DATETIME NULL;
+ALTER TABLE clubs 
+ADD COLUMN reg_open TINYINT(1) DEFAULT 1;
+
+INSERT INTO clubs_members (student_id, club_id, role)
+VALUES (
+    (SELECT Student_ID FROM students WHERE email = 'mehraj.mahmood@gmail.com'), 
+    1, -- Replace with the ID of the club you want to manage
+    'President'
+);
+
 
