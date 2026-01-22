@@ -90,7 +90,7 @@ class EventRegistration(models.Model):
     attendance_time = models.DateTimeField(db_column='Attendance_time', blank=True, null=True)  # Field name made lowercase.
     rating = models.PositiveIntegerField(db_column='Rating', blank=True, null=True)  # Field name made lowercase.
     comment = models.CharField(db_column='Comment', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    payment_status = models.CharField(db_column='Payment_status', max_length=7, blank=True, null=True)  # Field name made lowercase.
+    payment_status = models.CharField(db_column='Payment_status', max_length=10, blank=True, null=True)  # Field name made lowercase.
 
     class Meta:
         managed = False

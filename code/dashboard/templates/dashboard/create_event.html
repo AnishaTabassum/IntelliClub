@@ -1,0 +1,260 @@
+{% extends "dashboard/base.html" %} {% load static %} {% block content %}
+<div class="container py-5">
+  <div class="mb-5">
+    <h2 class="fw-bold fs-1">Create Club Event</h2>
+    <a
+      href="{% url 'exec_dashboard' club.club_id %}"
+      class="text-muted text-decoration-none small fw-bold"
+    >
+      <i class="bi bi-chevron-left"></i> BACK TO DASHBOARD
+    </a>
+  </div>
+
+  <form method="POST">
+    {% csrf_token %}
+
+    <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px">
+      <div class="row g-4">
+        <div class="col-md-8">
+          <label
+            class="text-muted small fw-bold text-uppercase mb-2 d-block"
+            style="letter-spacing: 1px"
+            >Event Name</label
+          >
+          <input
+            type="text"
+            name="event_name"
+            class="form-control border-light-subtle py-2 px-3"
+            style="border-radius: 10px"
+            placeholder="Enter event name"
+            required
+          />
+        </div>
+        <div class="col-md-4">
+          <label
+            class="text-muted small fw-bold text-uppercase mb-2 d-block"
+            style="letter-spacing: 1px"
+            >Event Type</label
+          >
+          <select
+            name="event_type"
+            class="form-select border-light-subtle py-2 px-3"
+            style="border-radius: 10px"
+          >
+            <option value="Workshop">Workshop</option>
+            <option value="Seminar">Seminar</option>
+            <option value="Competition">Competition</option>
+            <option value="Social">Social</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label
+            class="text-muted small fw-bold text-uppercase mb-2 d-block"
+            style="letter-spacing: 1px"
+            >Date</label
+          >
+          <input
+            type="date"
+            name="event_date"
+            class="form-control border-light-subtle py-2"
+            style="border-radius: 10px"
+            required
+          />
+        </div>
+        <div class="col-md-4">
+          <label
+            class="text-muted small fw-bold text-uppercase mb-2 d-block"
+            style="letter-spacing: 1px"
+            >Time</label
+          >
+          <input
+            type="time"
+            name="event_time"
+            class="form-control border-light-subtle py-2"
+            style="border-radius: 10px"
+            required
+          />
+        </div>
+        <div class="col-md-4">
+          <label
+            class="text-muted small fw-bold text-uppercase mb-2 d-block"
+            style="letter-spacing: 1px"
+            >Entry Fee (BDT)</label
+          >
+          <input
+            type="number"
+            name="event_fee"
+            class="form-control border-light-subtle py-2"
+            style="border-radius: 10px"
+            value="0"
+          />
+        </div>
+        <div class="col-md-12">
+          <label
+            class="text-muted small fw-bold text-uppercase mb-2 d-block"
+            style="letter-spacing: 1px"
+            >Venue</label
+          >
+          <input
+            type="text"
+            name="venue"
+            class="form-control border-light-subtle py-2"
+            style="border-radius: 10px"
+            placeholder="Location"
+          />
+        </div>
+        <div class="col-md-12">
+          <label
+            class="text-muted small fw-bold text-uppercase mb-2 d-block"
+            style="letter-spacing: 1px"
+            >Event Details</label
+          >
+          <textarea
+            name="details"
+            class="form-control border-light-subtle py-2"
+            style="border-radius: 10px"
+            rows="4"
+            placeholder="Brief description of the event"
+          ></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px">
+      <h5 class="fw-bold mb-4">Organizers & Budget</h5>
+      <div id="partner-container">
+        <div class="row g-3 align-items-end mb-4">
+          <div class="col-md-5">
+            <label
+              class="text-muted small fw-bold text-uppercase mb-2 d-block"
+              style="font-size: 0.7rem"
+              >Host Club</label
+            >
+            <input
+              type="text"
+              class="form-control border-light-subtle bg-light py-2"
+              style="border-radius: 10px"
+              value="{{ club.club_name }}"
+              readonly
+            />
+          </div>
+          <div class="col-md-3">
+            <label
+              class="text-muted small fw-bold text-uppercase mb-2 d-block"
+              style="font-size: 0.7rem"
+              >Role</label
+            >
+            <input
+              type="text"
+              class="form-control border-light-subtle bg-light py-2"
+              style="border-radius: 10px"
+              value="Host"
+              readonly
+            />
+          </div>
+          <div class="col-md-4">
+            <label
+              class="text-muted small fw-bold text-uppercase mb-2 d-block"
+              style="font-size: 0.7rem"
+              >Budget Share</label
+            >
+            <input
+              type="number"
+              name="budget_share"
+              class="form-control border-light-subtle py-2"
+              style="border-radius: 10px"
+              placeholder="Amount"
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        id="add-partner"
+        class="btn btn-outline-primary w-100 rounded-pill py-2 small fw-bold"
+        style="
+          border: 1px solid #000000;
+          background: transparent;
+          color: #000000;
+        "
+      >
+        + Add Partner Club
+      </button>
+    </div>
+
+    <button
+      type="submit"
+      class="btn btn-dark rounded-pill px-5 py-2 fw-bold shadow-sm"
+      style="
+        background-color: #000000;
+        border: none;
+        color: #ffffff;
+        min-width: 180px;
+      "
+    >
+      Create Event
+    </button>
+  </form>
+</div>
+
+<template id="partner-row-template">
+  <div class="row g-3 align-items-end mb-4 partner-item">
+    <div class="col-md-5">
+      <select
+        name="partner_club_ids"
+        class="form-select border-light-subtle py-2"
+        style="border-radius: 10px"
+      >
+        {% for c in all_clubs %}
+        <option value="{{ c.club_id }}">{{ c.club_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <input
+        type="text"
+        class="form-control border-light-subtle bg-light py-2"
+        style="border-radius: 10px"
+        value="Partner"
+        readonly
+      />
+    </div>
+    <div class="col-md-3">
+      <input
+        type="number"
+        name="budget_share"
+        class="form-control border-light-subtle py-2"
+        style="border-radius: 10px"
+        placeholder="Amount"
+        required
+      />
+    </div>
+    <div class="col-md-1">
+      <button
+        type="button"
+        class="btn btn-link text-danger remove-btn p-0 mb-1"
+      >
+        <i class="bi bi-trash-fill fs-5"></i>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script>
+  const addBtn = document.getElementById("add-partner");
+  const container = document.getElementById("partner-container");
+  const template = document.getElementById("partner-row-template");
+
+  addBtn.onclick = () => {
+    container.appendChild(template.content.cloneNode(true));
+  };
+
+  container.onclick = (e) => {
+    if (e.target.closest(".remove-btn")) {
+      e.target.closest(".partner-item").remove();
+    }
+  };
+</script>
+{% endblock %}

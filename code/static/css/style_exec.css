@@ -1,0 +1,31 @@
+/* Container Match */
+.exec-container {
+    padding-top: 2rem;
+}
+
+/* Cards: Matching the All Clubs Tab (image_72b44c) */
+.exec-card {
+    background: #ffffff;
+    border: 1px solid #f0f0f0 !important;
+    border-radius: 20px !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Professional Table Headers */
+.table thead th {
+    border-bottom: 1px solid #f8f9fa;
+    color: #888;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: 15px;
+}
+
+/* Input/Button refinement for the dashboard */
+.btn-success {
+    background-color: #198754;
+    border: none;
+}

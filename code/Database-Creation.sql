@@ -181,8 +181,8 @@ ADD COLUMN reg_open TINYINT(1) DEFAULT 1;
 
 INSERT INTO clubs_members (student_id, club_id, role)
 VALUES (
-    (SELECT Student_ID FROM students WHERE email = 'mehraj.mahmood@gmail.com'), 
-    1, -- Replace with the ID of the club you want to manage
+    (SELECT Student_ID FROM students WHERE email = 'labib@gmail.com'), 
+    2, -- Replace with the ID of the club you want to manage
     'President'
 );
 

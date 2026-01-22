@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.db import transaction
-from .models import Clubs, ClubsEvents, Users, Students,Clubs, ClubsMembers, Events,EventRegistration, ClubsRegistration
+from .models import Clubs, ClubsEvents, Users, Students,Clubs, ClubsMembers, Events,EventRegistration, ClubsRegistration, Volunteers
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from datetime import datetime
 
 def login_view(request):
     if request.method == 'POST':
@@ -69,24 +70,26 @@ def register_view(request):
         
 @login_required
 def home_view(request):
-    # Fetch events
+    # Fetch top 3 events for the cards
     upcoming_focus_events = Events.objects.all().order_by('event_date')[:3]
     
     try:
         current_student = Students.objects.get(email=request.user.user_email)
-        # Fetch memberships - Django now uses Member_ID behind the scenes
-        my_clubs = ClubsMembers.objects.filter(student=current_student)
         
-        # Registration logic
-        registrations = EventRegistration.objects.filter(student=current_student)
-        registered_list = [reg.event for reg in registrations]
+        # Sidebar data
+        my_clubs = ClubsMembers.objects.filter(student=current_student).select_related('club')
+        
+        # Optimized registration logic for the "My Registered Events" table
+        # We fetch the registrations and the linked event data in one go
+        registrations = EventRegistration.objects.filter(student=current_student).select_related('event')
+        
     except Students.DoesNotExist:
         my_clubs = []
-        registered_list = []
+        registrations = []
 
     context = {
         'events': upcoming_focus_events,
-        'my_events': registered_list,
+        'my_registrations': registrations, # Use registrations to access both Event and Reg data
         'my_clubs': my_clubs,
     }
     return render(request, 'dashboard/home.html', context)
@@ -103,7 +106,7 @@ def all_clubs_view(request):
         
         # 3. CRITICAL: Filter memberships ONLY for this student
         # If you use .all() here, EVERYONE sees EVERYONE'S clubs in the sidebar!
-        my_clubs = ClubsMembers.objects.filter(student=student)
+        my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
         
         # 4. Get lists for the badges on the main table
         joined_club_ids = list(my_clubs.values_list('club_id', flat=True))
@@ -160,6 +163,7 @@ def club_dashboard_view(request, club_id):
     student = Students.objects.get(email=request.user.user_email)
     club = get_object_or_404(Clubs, club_id=club_id)
     membership = get_object_or_404(ClubsMembers, student=student, club=club)
+    my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
     
     # 2. Fix the FieldError: Get events linked to this club via the bridge table
     # We filter ClubsEvents by the club_id string in your model
@@ -172,6 +176,7 @@ def club_dashboard_view(request, club_id):
 
     context = {
         'club': club,
+        'my_clubs': my_clubs,
         'all_members': all_members,
         'club_events': club_events, 
         'role': membership.role,
@@ -238,3 +243,107 @@ def toggle_registration(request, club_id):
             messages.error(request, "You do not have permission to change this setting.")
             
     return redirect('club_dashboard', club_id=club_id)
+
+from django.shortcuts import redirect
+from .models import Events, ClubsEvents
+
+def create_event_page(request, club_id):
+    hosting_club = get_object_or_404(Clubs, club_id=club_id)
+    
+    if request.method == "POST":
+        # 1. Capture Form Data
+        name = request.POST.get('event_name')
+        date_str = request.POST.get('event_date')
+        time_str = request.POST.get('event_time')
+        venue = request.POST.get('venue')
+        details = request.POST.get('details')
+        event_type = request.POST.get('event_type')
+        fee = request.POST.get('event_fee') or 0
+        
+        # Combine Date and Time for DateTimeField
+        full_datetime = None
+        if date_str and time_str:
+            full_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+
+        # 2. Handle Budgets and Partners
+        # Get all budget shares (host is usually the first one)
+        shares = request.POST.getlist('budget_share')
+        total_budget = sum(int(s) for s in shares if s)
+
+        # 3. Create the Main Event record
+        new_event = Events.objects.create(
+            event_name=name,
+            event_date=full_datetime,
+            event_details=details,
+            event_type=event_type,
+            event_fee=fee,
+            venue=venue,
+            budget=total_budget
+        )
+
+        # 4. Create ClubsEvents record for the Host
+        ClubsEvents.objects.create(
+            club_id=hosting_club.club_id, # Storing the ID string
+            event=new_event,
+            role='Host',
+            budget_share=int(shares[0]) if shares[0] else 0
+        )
+
+        # 5. Create ClubsEvents records for Partners
+        partner_ids = request.POST.getlist('partner_club_ids')
+        # Partners start from the second index in the 'shares' list
+        for i, p_id in enumerate(partner_ids):
+            ClubsEvents.objects.create(
+                club_id=p_id,
+                event=new_event,
+                role='Partner',
+                budget_share=int(shares[i+1]) if shares[i+1] else 0
+            )
+
+        return redirect('exec_dashboard', club_id=club_id)
+
+    all_clubs = Clubs.objects.exclude(club_id=club_id)
+    return render(request, 'dashboard/create_event.html', {
+        'club': hosting_club,
+        'all_clubs': all_clubs
+    })
+
+@login_required
+def event_detail_view(request, event_id):
+    event = get_object_or_404(Events, event_id=event_id)
+    student = Students.objects.get(email=request.user.user_email)
+    
+    # REQUIRED: Fetch clubs for the sidebar
+    my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
+    
+    # Check if user is already registered for either role
+    is_registered = EventRegistration.objects.filter(student=student, event=event).exists()
+    is_volunteer = Volunteers.objects.filter(student=student, event=event).exists()
+
+    if request.method == "POST":
+        action = request.POST.get('action')
+        
+        if action == 'attend' and not is_registered:
+            EventRegistration.objects.create(
+                student=student,
+                event=event,
+                attendance_code=None,
+                attendance='Absent',    
+                payment_status='Unpaid'
+            )
+            return redirect('event_detail', event_id=event_id)
+            
+        elif action == 'volunteer' and not is_volunteer:
+            Volunteers.objects.create(
+                student=student,
+                event=event,
+                role='General Volunteer'
+            )
+            return redirect('event_detail', event_id=event_id)
+
+    return render(request, 'dashboard/event_detail.html', {
+        'event': event,
+        'my_clubs': my_clubs,
+        'is_registered': is_registered,
+        'is_volunteer': is_volunteer,
+    })

@@ -1,4 +1,43 @@
 {% extends "dashboard/base.html" %} {% block content %}
+
+<style>
+  /* Subtle lift effect for the focus cards */
+  .event-card-link {
+    text-decoration: none !important;
+    display: block;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .event-card-link:hover {
+    transform: translateY(-8px);
+  }
+  .event-card-link:hover .card {
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid #000 !important;
+  }
+
+  /* Icon circle styling matching your brand */
+  .card-icon-circle {
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #000;
+  }
+
+  /* Animation for the arrow on hover */
+  .btn-get-started i {
+    transition: transform 0.2s ease;
+  }
+  .event-card-link:hover .btn-get-started i {
+    transform: translateX(5px);
+  }
+</style>
+
 <div class="mb-5">
   <h2 class="fw-bold fs-1 mb-2" style="letter-spacing: -1px">
     How to start: Choose a focus for today
@@ -9,38 +48,42 @@
 <div class="row g-4 mb-5">
   {% for event in events %}
   <div class="col-md-4">
-    <div
-      class="card event-card p-4 h-100 border-0 shadow-lg"
-      style="border-radius: 24px"
-    >
-      <div class="card-icon-circle shadow-sm border-2 border-dark mb-4">
-        <i class="bi {{ event.display_icon }} fs-2"></i>
-      </div>
-      <h4 class="fw-bold mb-1">{{ event.event_name }}</h4>
-      <span
-        class="badge bg-light text-dark border rounded-pill mb-3"
-        style="width: fit-content"
+    <a href="{% url 'event_detail' event.event_id %}" class="event-card-link">
+      <div
+        class="card p-4 h-100 border-0 shadow-lg"
+        style="border-radius: 24px"
       >
-        {{ event.event_type }}
-      </span>
-      <p class="text-muted small mb-4">
-        {{ event.event_details|truncatewords:15 }}
-      </p>
-      <div class="mt-auto pt-3 border-top">
-        <a
-          href="#"
-          class="btn-get-started w-100 fw-bold text-dark text-decoration-none"
+        <div class="card-icon-circle mb-4">
+          <i
+            class="bi {{ event.display_icon|default:'bi-rocket-takeoff' }} fs-2 text-dark"
+          ></i>
+        </div>
+
+        <h4 class="fw-bold mb-1 text-dark">{{ event.event_name }}</h4>
+
+        <span
+          class="badge bg-light text-dark border rounded-pill mb-3"
+          style="width: fit-content"
         >
-          Get started <i class="bi bi-arrow-right ms-2"></i>
-        </a>
+          {{ event.event_type }}
+        </span>
+
+        <p class="text-muted small mb-4">
+          {{ event.description|truncatewords:15 }}
+        </p>
+
+        <div class="mt-auto pt-3 border-top">
+          <div class="btn-get-started w-100 fw-bold text-dark">
+            Get started <i class="bi bi-arrow-right ms-2"></i>
+          </div>
+        </div>
       </div>
-    </div>
+    </a>
   </div>
   {% empty %}
-  <div class="col-12 text-center py-4 bg-white rounded-4 shadow-sm">
-    <p class="text-muted mb-0">
-      No upcoming focus events found in the database.
-    </p>
+  <div class="col-12 text-center py-5 bg-white rounded-4 shadow-sm border">
+    <i class="bi bi-search text-muted fs-1"></i>
+    <p class="text-muted mt-2">No upcoming focus events found.</p>
   </div>
   {% endfor %}
 </div>
@@ -49,36 +92,56 @@
   <h3 class="fw-bold mb-4">My Registered Events</h3>
   <div
     class="card border-0 shadow-sm p-4"
-    style="border-radius: 24px; background: rgba(255, 255, 255, 0.7)"
+    style="border-radius: 24px; background: rgba(255, 255, 255, 0.8)"
   >
-    {% if my_events %}
+    {% if my_registrations %}
     <div class="table-responsive">
       <table class="table table-hover align-middle">
         <thead class="text-muted small">
           <tr class="text-uppercase" style="letter-spacing: 1px">
-            <th>Event Name</th>
-            <th>Date</th>
-            <th>Venue</th>
+            <th>Event Details</th>
+            <th>Date & Time</th>
+            <th>Location</th>
             <th class="text-end">Status</th>
           </tr>
         </thead>
         <tbody>
-          {% for reg_event in my_events %}
+          {% for reg in my_registrations %}
           <tr>
             <td>
-              <div class="fw-bold text-dark">{{ reg_event.event_name }}</div>
-              <small class="text-muted">{{ reg_event.event_type }}</small>
+              <a
+                href="{% url 'event_detail' reg.event.event_id %}"
+                class="text-decoration-none"
+              >
+                <div class="fw-bold text-dark">{{ reg.event.event_name }}</div>
+              </a>
+              <small class="text-muted">{{ reg.event.event_type }}</small>
             </td>
-            <td class="text-muted">{{ reg_event.event_date|date:"M d, Y" }}</td>
+
+            <td class="text-muted">
+              <div>{{ reg.event.event_date|date:"M d, Y" }}</div>
+              <small style="font-size: 0.75rem"
+                >{{ reg.event.event_time }}</small
+              >
+            </td>
+
             <td>
-              <span class="badge bg-white text-dark border rounded-pill px-3"
-                >{{ reg_event.venue }}</span
+              <span
+                class="badge bg-white text-dark border rounded-pill px-3 py-2"
               >
+                <i class="bi bi-geo-alt me-1"></i> {{ reg.event.location }}
+              </span>
             </td>
+
             <td class="text-end">
-              <span class="text-success fw-bold"
-                ><i class="bi bi-check-circle-fill me-1"></i> Registered</span
+              <span
+                class="{% if reg.payment_status == 'Paid' %}text-success{% else %}text-warning{% endif %} fw-bold"
               >
+                <i
+                  class="bi {% if reg.payment_status == 'Paid' %}bi-check-circle-fill{% else %}bi-clock-history{% endif %} me-1"
+                ></i>
+                {{ reg.payment_status|default:"Registered" }}
+              </span>
             </td>
           </tr>
           {% endfor %}
@@ -87,15 +150,16 @@
     </div>
     {% else %}
     <div class="text-center py-5">
-      <i class="bi bi-calendar-event text-muted fs-1"></i>
+      <i class="bi bi-calendar-x text-muted fs-1"></i>
       <p class="text-muted mt-2">You haven't registered for any events yet.</p>
       <a
         href="{% url 'home' %}"
-        class="btn btn-outline-dark btn-sm rounded-pill mt-2"
-        >Browse All Events</a
+        class="btn btn-dark btn-sm rounded-pill px-4 mt-2"
+        >Browse Events</a
       >
     </div>
     {% endif %}
   </div>
 </div>
+
 {% endblock %}
