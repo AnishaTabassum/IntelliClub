@@ -18,7 +18,7 @@ urlpatterns = [
     path('club/toggle-reg/<int:club_id>/', views.toggle_registration, name='toggle_registration'),
     
     # --- Executive Actions (Member Requests) ---
-    path('club/approve/<int:reg_id>/', views.approve_member, name='approve_member'),
+    path('club/approve/<int:reg_id>/', views.approve_member, name='approve_registration'),
     path('club/reject/<int:reg_id>/', views.reject_member, name='reject_member'),
 
     # --- NEW: Organized Event Management Flow ---
@@ -45,10 +45,9 @@ urlpatterns = [
     path('profile/delete-skill/<int:skill_id>/', views.delete_skill, name='delete_skill'),
 
     path('club/<int:club_id>/assets/', views.asset_management, name='asset_management'),
-    path('assets/borrow/<int:asset_id>/', views.request_borrow, name='request_borrow'),
+    path('assets/borrow/<int:asset_id>/<int:club_id>/', views.request_borrow, name='request_borrow'),
     path('assets/approve/<int:loan_id>/', views.approve_loan, name='approve_loan'),
+    path('assets/reject/<int:loan_id>/', views.reject_loan, name='reject_loan'),
     path('assets/return/<int:loan_id>/', views.return_asset, name='return_asset'),
-    path('loans/reject/<int:loan_id>/', views.reject_loan, name='reject_loan'),
     path('club/<int:club_id>/assets/add/', views.add_asset, name='add_asset'),
-    path('loans/return/<int:loan_id>/', views.return_asset, name='return_asset'),
 ]

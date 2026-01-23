@@ -89,10 +89,10 @@
               <tr>
                 <td><strong>{{ req.student.name }}</strong><br><span class="text-muted">{{ req.student.email }}</span></td>
                 <td class="text-end">
-                  <form action="{% url 'approve_registration' req.registration_id %}" method="POST">
+                  <form action="{% url 'approve_registration' req.reg_id %}" method="POST">
                     {% csrf_token %}
                     <button class="btn btn-primary btn-sm rounded-pill px-3">Approve</button>
-                  </form>
+                </form>
                 </td>
               </tr>
               {% empty %}

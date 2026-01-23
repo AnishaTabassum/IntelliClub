@@ -83,7 +83,7 @@
                                             <i class="bi bi-clock-history me-1"></i> Pending
                                         </button>
                                     {% else %}
-                                        <form action="{% url 'request_borrow' asset.asset_id %}" method="POST" class="d-inline">
+                                        <form action="{% url 'request_borrow' asset.asset_id club.club_id %}" method="POST">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-dark rounded-pill px-4 fw-bold">Request</button>
                                         </form>
@@ -119,13 +119,14 @@
                         <div class="text-muted" style="font-size: 0.75rem;">From: {{ loan.borrower_member.student.name }}</div>
                     </div>
                     <div class="d-flex gap-2">
-                        <form action="{% url 'reject_loan' loan.loan_id %}" method="POST" class="m-0">
+                        <form action="{% url 'approve_loan' loan.loan_id %}" method="POST">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 border-1 fw-bold" style="font-size: 0.7rem;">Reject</button>
+                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">Approve</button>
                         </form>
-                        <form action="{% url 'approve_loan' loan.loan_id %}" method="POST" class="m-0">
+
+                        <form action="{% url 'reject_loan' loan.loan_id %}" method="POST">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" style="font-size: 0.7rem;">Approve</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">Reject</button>
                         </form>
                     </div>
                 </div>
@@ -143,7 +144,9 @@
                 <div class="small">
                     {% for loan in currently_lended %}
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-light">
-                        <span class="text-secondary"><strong class="text-dark">{{ loan.asset.asset_name }}</strong> → {{ loan.borrower_member.club.club_name }}</span>
+                        <span class="text-secondary">
+                            <strong class="text-dark">{{ loan.asset.asset_name }}</strong> → {{ loan.borrower_member.club.club_name }}
+                        </span>
                         <form action="{% url 'return_asset' loan.loan_id %}" method="POST">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-link text-primary text-decoration-none p-0 fw-bold" style="font-size: 0.75rem;">Confirm Return</button>

@@ -678,38 +678,44 @@ def delete_skill(request, skill_id):
 
 @login_required
 def asset_management(request, club_id):
-    club = get_object_or_404(Clubs, club_id=club_id)
+    # The club context we are currently viewing
+    current_view_club = get_object_or_404(Clubs, club_id=club_id)
     
-    # 1. Get ALL member profiles for the current user across all their clubs
+    # 1. Global Pending List (IDs to disable buttons)
     user_member_ids = ClubsMembers.objects.filter(
         student__email__user_email=request.user.user_email
     ).values_list('member_id', flat=True)
 
-    # 2. Get asset IDs requested by ANY of this user's member profiles
-    # This ensures that if I request an item while representing 'Robotics Club', 
-    # it stays 'Pending' even if I switch to 'Chess Club' view.
     already_requested_ids = list(Loans.objects.filter(
         borrower_member_id__in=user_member_ids, 
         status='Pending'
     ).values_list('asset_id', flat=True))
 
+    # 2. Marketplace & Inventory
+    my_assets = Assets.objects.filter(club=current_view_club)
+    other_assets = Assets.objects.exclude(club=current_view_club)
+    
+    # 3. Lend Requests (Requests awaiting THIS club's approval)
+    lend_requests = Loans.objects.filter(asset__club=current_view_club, status='Pending')
 
-    my_assets = Assets.objects.filter(club=club)
-    other_assets = Assets.objects.exclude(club=club)
-    lend_requests = Loans.objects.filter(asset__club=club, status='Pending')
+    # 4. Outgoing (Assets THIS club owns that are lent to OTHER clubs)
+    # Logic: Asset Owner = Current Club AND Borrower Club != Current Club
     currently_lended = Loans.objects.filter(
-        asset__club=club, 
+        asset__club=current_view_club, 
         status='Approved', 
         return_date__isnull=True
-    ).exclude(borrower_member__club=club)
+    ).exclude(borrower_member__club=current_view_club)
+
+    # 5. Incoming (Assets OTHER clubs own that THIS club has borrowed)
+    # Logic: Borrower Club = Current Club AND Asset Owner != Current Club
     currently_borrowed = Loans.objects.filter(
-        borrower_member__club=club, 
+        borrower_member__club=current_view_club, 
         status='Approved', 
         return_date__isnull=True
-    ).exclude(asset__club=club)
+    ).exclude(asset__club=current_view_club)
 
     return render(request, 'dashboard/asset_management.html', {
-        'club': club,
+        'club': current_view_club,
         'my_assets': my_assets,
         'other_assets': other_assets,
         'already_requested_ids': already_requested_ids,
@@ -719,70 +725,79 @@ def asset_management(request, club_id):
     })
 
 @login_required
-def request_borrow(request, asset_id):
+def request_borrow(request, asset_id, club_id):
     asset = get_object_or_404(Assets, asset_id=asset_id)
     
-    # FIX: Use student__email to match your Student model's ForeignKey
-    borrower = ClubsMembers.objects.filter(student__email=request.user).first()
+    # Get the specific member profile for the club currently being viewed
+    borrower_profile = get_object_or_404(
+        ClubsMembers, 
+        student__email__user_email=request.user.user_email, 
+        club_id=club_id
+    )
 
-    if not borrower:
-        messages.error(request, "You must be a club member to borrow assets.")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
+    # Simple check to prevent self-borrowing
+    if asset.club_id == borrower_profile.club_id:
+        messages.error(request, "You cannot borrow from your own club.")
+        return redirect('asset_management', club_id=club_id)
 
-    # PREVENT DUPLICATES: Now 'status' will be recognized by Django
-    exists = Loans.objects.filter(asset=asset, borrower_member=borrower, status='Pending').exists()
-    if exists:
-        messages.warning(request, "You already have a pending request for this item.")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-
-    # CREATE: This will now correctly populate the 'status' column in your DB
+    # Create the loan linked specifically to the club profile being used
     Loans.objects.create(
         asset=asset,
-        borrower_member=borrower,
-        lender_member=None,
+        borrower_member=borrower_profile,
         status='Pending'
     )
     
     messages.success(request, f"Request sent for {asset.asset_name}")
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+    return redirect('asset_management', club_id=club_id)
 
 @login_required
 def approve_loan(request, loan_id):
     if request.method == "POST":
         loan = get_object_or_404(Loans, loan_id=loan_id)
-        loan.status = 'Approved'
         
-        # FIX: student__email points to Users table, so we check user_email
-        member = get_object_or_404(
-            ClubsMembers, 
+        # Identify the executive member of the club that owns the asset
+        approver = ClubsMembers.objects.filter(
             student__email__user_email=request.user.user_email, 
             club=loan.asset.club
-        )
+        ).first()
         
-        loan.lender_member = member
-        loan.save()
+        if approver:
+            loan.status = 'Approved'
+            loan.lender_member = approver  # This saves the Lender_Member_ID
+            loan.save()
+            messages.success(request, f"Loan for {loan.asset.asset_name} approved.")
+        else:
+            messages.error(request, "You do not have permission to approve this.")
+            
     return redirect(request.META.get('HTTP_REFERER', 'asset_management'))
 
 @login_required
 def reject_loan(request, loan_id):
     if request.method == "POST":
         loan = get_object_or_404(Loans, loan_id=loan_id)
-        loan.status = 'Rejected'
-        loan.save()
+        
+        # Track who rejected the loan
+        rejector = ClubsMembers.objects.filter(
+            student__email__user_email=request.user.user_email, 
+            club=loan.asset.club
+        ).first()
+        
+        if rejector:
+            loan.status = 'Rejected'
+            loan.lender_member = rejector # Saves ID even on rejection
+            loan.save()
+            messages.info(request, "Loan request rejected.")
+            
     return redirect(request.META.get('HTTP_REFERER', 'asset_management'))
 
 @login_required
 def return_asset(request, loan_id):
     if request.method == "POST":
         loan = get_object_or_404(Loans, loan_id=loan_id)
-        
-        # Mark as returned by setting the return_date
         loan.return_date = timezone.now()
-        loan.status = 'Returned' # Optional: change status to keep history clean
+        loan.status = 'Returned'
         loan.save()
-        
-        messages.success(request, f"Return processed for {loan.asset.asset_name}")
-        
+        messages.success(request, f"Item {loan.asset.asset_name} marked as returned.")
     return redirect(request.META.get('HTTP_REFERER', 'asset_management'))
 
 @login_required
