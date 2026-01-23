@@ -331,50 +331,64 @@ def create_event_page(request, club_id):
 
 @login_required
 def event_detail_view(request, event_id):
-    # Fetch the event or return 404
     event = get_object_or_404(Events, event_id=event_id)
     student = Students.objects.get(email=request.user.user_email)
 
-    # 1. Fetch all involvements from the junction table
+    # Fetch involvements, hosting/partnered clubs
     club_involvements = ClubsEvents.objects.filter(event=event)
-    
-    # 2. Separate them into Host and Partners
     hosting_clubs = []
     partnered_clubs = []
     
     for involvement in club_involvements:
-        # Fetch the actual Club object using the ID string
         club_obj = Clubs.objects.filter(club_id=involvement.club_id).first()
         if club_obj:
             if involvement.role == 'Host':
                 hosting_clubs.append(club_obj)
             else:
                 partnered_clubs.append(club_obj)
-    # Fetch the registration object to check Payment_status
+
+    # Fetch registration and volunteer objects
     reg_object = EventRegistration.objects.filter(student=student, event=event).first()
     is_registered = reg_object is not None
+    
     vol_object = Volunteers.objects.filter(student=student, event=event).first()
     is_volunteer = vol_object is not None
 
+    # Logic for Review Permissions
+    # Only allow review if they have a successful registration
+    can_review = reg_object and reg_object.payment_status == 'Success'
+
     if request.method == "POST":
         action = request.POST.get('action')
+        
+        # Action: Registration
         if action == 'attend' and not is_registered:
             EventRegistration.objects.create(
                 student=student,
                 event=event,
-                payment_status='Unpaid', # This initiates the admin request
+                payment_status='Unpaid',
                 attendance='Absent'
             )
             return redirect('event_detail', event_id=event_id)
             
+        # Action: Volunteering
         elif action == 'volunteer' and not is_volunteer:
-            # FIX: Set role to 'Pending' so it appears in the Admin's request list
             Volunteers.objects.create(
                 student=student,
                 event=event,
-                role='Pending', # This triggers the approval workflow
-                volunteer_date=None # Explicitly keep null until approval
+                role='Pending'
             )
+            return redirect('event_detail', event_id=event_id)
+
+        # Action: Feedback (NEW)
+        elif action == 'submit_feedback' and can_review:
+            rating = request.POST.get('rating')
+            comment = request.POST.get('comment')
+            
+            # Update the existing registration record
+            reg_object.rating = rating
+            reg_object.comment = comment
+            reg_object.save()
             return redirect('event_detail', event_id=event_id)
 
     return render(request, 'dashboard/event_detail.html', {
@@ -384,7 +398,8 @@ def event_detail_view(request, event_id):
         'reg_object': reg_object,
         'is_registered': is_registered,
         'is_volunteer': is_volunteer,
-        'vol_object': vol_object, # Pass the object to check the specific role in template
+        'vol_object': vol_object,
+        'can_review': can_review, # Pass permission to template
     })
 
 @login_required
@@ -448,65 +463,75 @@ def club_events_list(request, club_id):
 
 @login_required
 def manage_specific_event(request, event_id):
-    # 1. Fetch the event
     event = get_object_or_404(Events, event_id=event_id)
-    
-    # 2. Get the junction record
-    # Based on your model, the field is 'club_id' (CharField)
     club_link = ClubsEvents.objects.filter(event=event).first()
     
-    # 3. Fetch the actual Club object so the template has an ID for the URL
     club = None
     if club_link:
-        # We use the string stored in club_link.club_id to find the Clubs record
-        from .models import Clubs
         club = Clubs.objects.filter(club_id=club_link.club_id).first()
     
-    # 4. Fetch your Registration and Volunteer data
     pending_requests = EventRegistration.objects.filter(event=event, payment_status='Unpaid')
     confirmed_attendees = EventRegistration.objects.filter(event=event, payment_status='Success')
     
-    # Volunteer data (Using 'role' to track 'Pending' status)
+    # 1. Get current month and year
+    now = timezone.now()
+    
+    # 2. Fetch pending volunteers
     pending_vols = Volunteers.objects.filter(event=event, role='Pending')
+    
+    # 3. Calculate monthly activity for each volunteer
+    now = timezone.now()
+    for vol in pending_vols:
+        vol.monthly_count = Volunteers.objects.filter(
+            student=vol.student,
+            role='Approved',
+            volunteer_date__month=now.month,
+            volunteer_date__year=now.year
+        ).count()
+
     approved_vols = Volunteers.objects.filter(event=event, role='Approved')
 
     return render(request, 'dashboard/manage_event.html', {
         'event': event,
-        'club': club,  # THIS FIXES THE NOREVERSEMATCH
+        'club': club,
         'pending_requests': pending_requests,
         'confirmed_attendees': confirmed_attendees,
-        'pending_vols': pending_vols,
+        'pending_vols': pending_vols, # Now contains .monthly_count
         'approved_vols': approved_vols
     })
 
 @login_required
-# Changed volunteer_id to vol_id to match your URL config
 def approve_volunteer(request, vol_id):
-    # Use vol_id here as well
+    # Fetch the specific volunteer record
     volunteer = get_object_or_404(Volunteers, volunteer_id=vol_id)
     
+    # Get budget from GET parameters
     budget = request.GET.get('budget', 0)
-    
     try:
         budget_value = float(budget)
     except (ValueError, TypeError):
         budget_value = 0
 
+    # Update the volunteer record
     volunteer.role = 'Approved'
     volunteer.budget_allocated = budget_value 
+    
+    # FIX: Set the date to the EVENT'S date, not the current timestamp
+    # This ensures the monthly activity count is based on when the work happens
+    volunteer.volunteer_date = volunteer.event.event_date 
+    
     volunteer.save()
     
+    # Redirect back to the management page
     return redirect('manage_specific_event', event_id=volunteer.event.event_id)
 
 @login_required
 def reject_volunteer(request, vol_id):
-    # FIX: Use volunteer_id instead of id to match your model definition
+    # Fetch the record using volunteer_id to avoid FieldError
     vol = get_object_or_404(Volunteers, volunteer_id=vol_id)
     event_id = vol.event.event_id
     
-    if request.method == "POST":
-        # Delete the record to reject the request
-        vol.delete()
-        messages.warning(request, "Volunteer request has been rejected and removed.")
+    # This will now run for both GET and POST requests
+    vol.delete()
         
     return redirect('manage_specific_event', event_id=event_id)
