@@ -3,11 +3,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.db import transaction
 from django.db.models import Q,Count
-from .models import Clubs, ClubsEvents, Users, Students,Clubs, ClubsMembers, Events,EventRegistration, ClubsRegistration, Volunteers
+from .models import Alert, Clubs, ClubsEvents, Loans, Users, Students,Clubs, ClubsMembers, Events,EventRegistration, ClubsRegistration, Volunteers, Expenses, Skills, Assets
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from datetime import datetime
+
+from dashboard import models
 
 def login_view(request):
     if request.method == 'POST':
@@ -163,20 +165,32 @@ def join_club_request(request, club_id):
 
 @login_required
 def club_dashboard_view(request, club_id):
-    # 1. Standard setup
     student = Students.objects.get(email=request.user.user_email)
     club = get_object_or_404(Clubs, club_id=club_id)
     membership = get_object_or_404(ClubsMembers, student=student, club=club)
-    my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
     
-    # 2. Get events linked to this club
+    # Existing logic for events and members...
     event_links = ClubsEvents.objects.filter(club_id=club.club_id).select_related('event')
     club_events = [link.event for link in event_links]
-    
-    # Get IDs of these events to filter registrations
     club_event_ids = [link.event.event_id for link in event_links]
-    
     all_members = ClubsMembers.objects.filter(club=club).select_related('student')
+    my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
+
+    # NEW: Handle Alert Creation POST
+    if request.method == "POST" and request.POST.get('action') == 'create_alert':
+        message = request.POST.get('message')
+        # Only allow Executives to post
+        if membership.role in ['President', 'Vice President', 'Executive'] and message:
+            Alert.objects.create(
+                club=club,
+                message=message,
+                created_at=timezone.now()
+            )
+            messages.success(request, "Alert broadcasted successfully!")
+            return redirect('club_dashboard', club_id=club_id)
+
+    # NEW: Fetch Alerts for the accordion (General and Exec view)
+    alerts = Alert.objects.filter(club=club).order_by('-created_at')
 
     context = {
         'club': club,
@@ -184,20 +198,15 @@ def club_dashboard_view(request, club_id):
         'all_members': all_members,
         'club_events': club_events, 
         'role': membership.role,
+        'alerts': alerts, # Pass alerts to both views
     }
 
-    # 4. Executive Specific Logic
     if membership.role in ['President', 'Vice President', 'Executive']:
-        # Club Membership Requests (already there)
         context['pending_requests'] = ClubsRegistration.objects.filter(club=club)
-        
-        # NEW: Event Registration Requests
-        # We filter for 'Unpaid' status which represents a new request
         context['event_reg_requests'] = EventRegistration.objects.filter(
             event_id__in=club_event_ids, 
             payment_status='Unpaid'
         ).select_related('student', 'event')
-        
         return render(request, 'dashboard/exec_dashboard.html', context)
     else:
         return render(request, 'dashboard/members_view.html', context)
@@ -331,10 +340,11 @@ def create_event_page(request, club_id):
 
 @login_required
 def event_detail_view(request, event_id):
+    # Fetch the event and student
     event = get_object_or_404(Events, event_id=event_id)
     student = Students.objects.get(email=request.user.user_email)
 
-    # Fetch involvements, hosting/partnered clubs
+    # 1. Fetch involvements, hosting/partnered clubs
     club_involvements = ClubsEvents.objects.filter(event=event)
     hosting_clubs = []
     partnered_clubs = []
@@ -347,48 +357,85 @@ def event_detail_view(request, event_id):
             else:
                 partnered_clubs.append(club_obj)
 
-    # Fetch registration and volunteer objects
+    # 2. Fetch registration and volunteer objects
     reg_object = EventRegistration.objects.filter(student=student, event=event).first()
     is_registered = reg_object is not None
     
     vol_object = Volunteers.objects.filter(student=student, event=event).first()
     is_volunteer = vol_object is not None
 
-    # Logic for Review Permissions
-    # Only allow review if they have a successful registration
+    # 3. Logic for Permissions
     can_review = reg_object and reg_object.payment_status == 'Success'
+    is_approved_volunteer = vol_object and vol_object.role == 'Approved'
+    
+    # 4. Expense Logic (Fetch existing expenses and total)
+    volunteer_expenses = []
+    total_spent = 0
+    remaining_budget = 0
+    if is_approved_volunteer:
+        volunteer_expenses = Expenses.objects.filter(volunteer=vol_object)
+        total_spent = sum(exp.amount for exp in volunteer_expenses if exp.amount)
+        
+        # Calculate the actual remaining balance here
+        budget_allocated = vol_object.budget_allocated or 0
+        remaining_budget = budget_allocated - total_spent
 
+    # 5. Handle POST actions
     if request.method == "POST":
         action = request.POST.get('action')
         
-        # Action: Registration
-        if action == 'attend' and not is_registered:
-            EventRegistration.objects.create(
-                student=student,
-                event=event,
-                payment_status='Unpaid',
-                attendance='Absent'
-            )
-            return redirect('event_detail', event_id=event_id)
+        # Action: Registration (Blocked if Volunteer)
+        if action == 'attend':
+            if is_volunteer:
+                messages.error(request, "You are already a volunteer and cannot register as an attendee.")
+            elif not is_registered:
+                EventRegistration.objects.create(
+                    student=student, event=event,
+                    payment_status='Unpaid', attendance='Absent'
+                )
+                return redirect('event_detail', event_id=event_id)
             
-        # Action: Volunteering
-        elif action == 'volunteer' and not is_volunteer:
-            Volunteers.objects.create(
-                student=student,
-                event=event,
-                role='Pending'
-            )
+        # Action: Volunteering (Blocked if Attendee)
+        elif action == 'volunteer':
+            if is_registered:
+                messages.error(request, "You are already an attendee and cannot apply to volunteer.")
+            elif not is_volunteer:
+                Volunteers.objects.create(
+                    student=student, event=event, role='Pending'
+                )
+                return redirect('event_detail', event_id=event_id)
+
+        # Action: Feedback
+        elif action == 'submit_feedback' and can_review:
+            reg_object.rating = request.POST.get('rating')
+            reg_object.comment = request.POST.get('comment')
+            reg_object.save()
             return redirect('event_detail', event_id=event_id)
 
-        # Action: Feedback (NEW)
-        elif action == 'submit_feedback' and can_review:
-            rating = request.POST.get('rating')
-            comment = request.POST.get('comment')
+        # Action: Expense Submission (NEW)
+        elif action == 'submit_expense' and is_approved_volunteer:
+            description = request.POST.get('description', '').strip()
+            amount_str = request.POST.get('amount', '').strip()
             
-            # Update the existing registration record
-            reg_object.rating = rating
-            reg_object.comment = comment
-            reg_object.save()
+            # Strict validation: Check if fields are empty or amount is zero/negative
+            if not description or not amount_str:
+                messages.error(request, "Both description and amount are required.")
+            else:
+                try:
+                    amount = float(amount_str)
+                    if amount <= 0:
+                        messages.error(request, "Amount must be greater than zero.")
+                    elif vol_object.budget_allocated and (total_spent + amount > vol_object.budget_allocated):
+                        messages.warning(request, "This expense exceeds your allocated budget!")
+                    else:
+                        Expenses.objects.create(
+                            volunteer=vol_object,
+                            description=description,
+                            amount=amount
+                        )
+                except ValueError:
+                    messages.error(request, "Please enter a valid number for the amount.")
+            
             return redirect('event_detail', event_id=event_id)
 
     return render(request, 'dashboard/event_detail.html', {
@@ -399,7 +446,11 @@ def event_detail_view(request, event_id):
         'is_registered': is_registered,
         'is_volunteer': is_volunteer,
         'vol_object': vol_object,
-        'can_review': can_review, # Pass permission to template
+        'can_review': can_review,
+        'is_approved_volunteer': is_approved_volunteer,
+        'volunteer_expenses': volunteer_expenses,
+        'total_spent': total_spent,
+        'remaining_budget': remaining_budget,
     })
 
 @login_required
@@ -535,3 +586,217 @@ def reject_volunteer(request, vol_id):
     vol.delete()
         
     return redirect('manage_specific_event', event_id=event_id)
+
+@login_required
+def create_alert(request):
+    if request.method == "POST":
+        # Get data from the modal form
+        subject = request.POST.get('subject')
+        message = request.POST.get('message')
+        club_id = request.POST.get('club_id')
+        
+        if subject and message and club_id:
+            club = get_object_or_404(Clubs, club_id=club_id)
+            # Create the record with the new Subject field
+            Alert.objects.create(
+                club=club,
+                subject=subject, # This was likely missing
+                message=message,
+                created_at=timezone.now()
+            )
+            messages.success(request, "Alert broadcasted successfully!")
+        else:
+            messages.error(request, "Both Subject and Message are required.")
+            
+    # Safely redirect back to the executive dashboard
+    return redirect(request.META.get('HTTP_REFERER', 'club_dashboard'))
+
+@login_required
+def delete_alert(request, alert_id):
+    # Fetch the alert or return a 404 if not found
+    alert = get_object_or_404(Alert, alert_id=alert_id)
+    
+    # Check if the user is an executive of the club that owns this alert
+    membership = ClubsMembers.objects.filter(
+        student__email=request.user.user_email, 
+        club=alert.club
+    ).first()
+
+    if membership and membership.role in ['President', 'Vice President', 'Executive']:
+        alert.delete()
+        messages.success(request, "Alert deleted successfully.")
+    else:
+        messages.error(request, "You do not have permission to delete this alert.")
+
+    return redirect(request.META.get('HTTP_REFERER', 'club_dashboard'))
+
+@login_required
+def profile_view(request):
+    student = get_object_or_404(Students, email=request.user.user_email)
+    skills = Skills.objects.filter(student=student)
+    
+    # Updated: Filter by Attendance status instead of just Payment
+    participated_events = EventRegistration.objects.filter(
+        student=student, 
+        attendance='Present'  # Adjust this string to match your DB value (e.g., 'Yes')
+    ).select_related('event')
+    
+    volunteered_events = Volunteers.objects.filter(
+        student=student, 
+        role='Approved'
+    ).select_related('event')
+
+    return render(request, 'dashboard/profile.html', {
+        'student': student,
+        'skills': skills,
+        'events_attended_count': participated_events.count(),
+        'events_volunteered_count': volunteered_events.count(),
+        'participated_events': participated_events,
+        'volunteered_events': volunteered_events,
+    })
+
+@login_required
+def add_skill(request):
+    if request.method == 'POST':
+        student = get_object_or_404(Students, email=request.user.user_email)
+        skill_name = request.POST.get('skill_name').strip()
+        
+        if skill_name:
+            # Create the skill record in the database
+            Skills.objects.create(student=student, skill=skill_name)
+            messages.success(request, f"Skill '{skill_name}' added!")
+            
+    return redirect('profile')
+
+@login_required
+def delete_skill(request, skill_id):
+    skill = get_object_or_404(Skills, skill_id=skill_id)
+    # Ensure the student only deletes their own skills
+    if skill.student.email == request.user.user_email:
+        skill.delete()
+    return redirect('profile')
+
+@login_required
+def asset_management(request, club_id):
+    club = get_object_or_404(Clubs, club_id=club_id)
+    
+    # 1. Get ALL member profiles for the current user across all their clubs
+    user_member_ids = ClubsMembers.objects.filter(
+        student__email__user_email=request.user.user_email
+    ).values_list('member_id', flat=True)
+
+    # 2. Get asset IDs requested by ANY of this user's member profiles
+    # This ensures that if I request an item while representing 'Robotics Club', 
+    # it stays 'Pending' even if I switch to 'Chess Club' view.
+    already_requested_ids = list(Loans.objects.filter(
+        borrower_member_id__in=user_member_ids, 
+        status='Pending'
+    ).values_list('asset_id', flat=True))
+
+
+    my_assets = Assets.objects.filter(club=club)
+    other_assets = Assets.objects.exclude(club=club)
+    lend_requests = Loans.objects.filter(asset__club=club, status='Pending')
+    currently_lended = Loans.objects.filter(
+        asset__club=club, 
+        status='Approved', 
+        return_date__isnull=True
+    ).exclude(borrower_member__club=club)
+    currently_borrowed = Loans.objects.filter(
+        borrower_member__club=club, 
+        status='Approved', 
+        return_date__isnull=True
+    ).exclude(asset__club=club)
+
+    return render(request, 'dashboard/asset_management.html', {
+        'club': club,
+        'my_assets': my_assets,
+        'other_assets': other_assets,
+        'already_requested_ids': already_requested_ids,
+        'lend_requests': lend_requests,
+        'currently_lended': currently_lended,
+        'currently_borrowed': currently_borrowed
+    })
+
+@login_required
+def request_borrow(request, asset_id):
+    asset = get_object_or_404(Assets, asset_id=asset_id)
+    
+    # FIX: Use student__email to match your Student model's ForeignKey
+    borrower = ClubsMembers.objects.filter(student__email=request.user).first()
+
+    if not borrower:
+        messages.error(request, "You must be a club member to borrow assets.")
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    # PREVENT DUPLICATES: Now 'status' will be recognized by Django
+    exists = Loans.objects.filter(asset=asset, borrower_member=borrower, status='Pending').exists()
+    if exists:
+        messages.warning(request, "You already have a pending request for this item.")
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    # CREATE: This will now correctly populate the 'status' column in your DB
+    Loans.objects.create(
+        asset=asset,
+        borrower_member=borrower,
+        lender_member=None,
+        status='Pending'
+    )
+    
+    messages.success(request, f"Request sent for {asset.asset_name}")
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@login_required
+def approve_loan(request, loan_id):
+    if request.method == "POST":
+        loan = get_object_or_404(Loans, loan_id=loan_id)
+        loan.status = 'Approved'
+        
+        # FIX: student__email points to Users table, so we check user_email
+        member = get_object_or_404(
+            ClubsMembers, 
+            student__email__user_email=request.user.user_email, 
+            club=loan.asset.club
+        )
+        
+        loan.lender_member = member
+        loan.save()
+    return redirect(request.META.get('HTTP_REFERER', 'asset_management'))
+
+@login_required
+def reject_loan(request, loan_id):
+    if request.method == "POST":
+        loan = get_object_or_404(Loans, loan_id=loan_id)
+        loan.status = 'Rejected'
+        loan.save()
+    return redirect(request.META.get('HTTP_REFERER', 'asset_management'))
+
+@login_required
+def return_asset(request, loan_id):
+    if request.method == "POST":
+        loan = get_object_or_404(Loans, loan_id=loan_id)
+        
+        # Mark as returned by setting the return_date
+        loan.return_date = timezone.now()
+        loan.status = 'Returned' # Optional: change status to keep history clean
+        loan.save()
+        
+        messages.success(request, f"Return processed for {loan.asset.asset_name}")
+        
+    return redirect(request.META.get('HTTP_REFERER', 'asset_management'))
+
+@login_required
+def add_asset(request, club_id):
+    if request.method == 'POST':
+        club = get_object_or_404(Clubs, club_id=club_id)
+        asset_name = request.POST.get('asset_name')
+        category = request.POST.get('category')
+        
+        Assets.objects.create(
+            club=club,
+            asset_name=asset_name,
+            category=category
+        )
+        messages.success(request, "Asset added to inventory.")
+    
+    return redirect('asset_management', club_id=club_id)

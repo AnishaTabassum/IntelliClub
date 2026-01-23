@@ -9,13 +9,16 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 class Alert(models.Model):
-    alert_id = models.AutoField(db_column='Alert_ID', primary_key=True)  # Field name made lowercase.
-    club = models.ForeignKey('Clubs', models.CASCADE, db_column='Club_ID', blank=True, null=True)  # Field name made lowercase.
-    message = models.CharField(db_column='Message', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    created_at = models.DateTimeField(db_column='Created_at', blank=True, null=True)  # Field name made lowercase.
+    alert_id = models.AutoField(db_column='Alert_ID', primary_key=True)
+    club = models.ForeignKey('Clubs', models.CASCADE, db_column='Club_ID', blank=True, null=True)
+    # New Subject field for accordion headers
+    subject = models.CharField(db_column='Subject', max_length=100, blank=False, null=False)
+    # Message field for accordion body
+    message = models.TextField(db_column='Message', blank=False, null=False) 
+    created_at = models.DateTimeField(db_column='Created_at', auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = False  # Keep as False since you are manually updating the DB
         db_table = 'alert'
 
 
@@ -114,8 +117,8 @@ class Events(models.Model):
 class Expenses(models.Model):
     expenses_id = models.AutoField(db_column='Expenses_ID', primary_key=True)  # Field name made lowercase.
     volunteer = models.ForeignKey('Volunteers', models.SET_NULL, db_column='Volunteer_ID', blank=True, null=True)  # Field name made lowercase.
-    description = models.CharField(db_column='Description', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    amount = models.IntegerField(db_column='Amount', blank=True, null=True)  # Field name made lowercase.
+    description = models.CharField(db_column='Description', max_length=255)  # Field name made lowercase.
+    amount = models.IntegerField(db_column='Amount')  # Field name made lowercase.
 
     class Meta:
         managed = False
@@ -124,6 +127,7 @@ class Expenses(models.Model):
 
 class Loans(models.Model):
     # You can now safely uncomment this!
+
     loan_id = models.AutoField(db_column='Loan_ID', primary_key=True)
     asset = models.ForeignKey('Assets', on_delete=models.CASCADE, db_column='Asset_ID')
     
@@ -144,6 +148,7 @@ class Loans(models.Model):
     )
     borrow_date = models.DateTimeField(db_column='Borrow_date', auto_now_add=True)
     return_date = models.DateTimeField(db_column='return_date', null=True, blank=True)
+    status = models.CharField(db_column='status', max_length=20, default='Pending')
 
     class Meta:
         managed = False

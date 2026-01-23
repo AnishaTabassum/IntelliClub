@@ -1,0 +1,208 @@
+{% extends "dashboard/base.html" %} {% block content %}
+<style>
+  .bg-success-soft {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+  .bg-info-soft {
+    background-color: #e3f2fd;
+    color: #1565c0;
+  }
+  .profile-header {
+    background: linear-gradient(to right, #ffffff, #f8f9fa);
+    border-radius: 20px;
+  }
+</style>
+
+<div class="container-fluid py-4 px-5">
+  <div class="card border-0 shadow-sm p-5 text-center mb-5 profile-header">
+    <div class="position-relative d-inline-block mx-auto mb-4">
+      <i class="bi bi-person-circle text-primary" style="font-size: 6rem"></i>
+      <span
+        class="position-absolute bottom-0 end-0 badge rounded-pill bg-success p-2 border border-white"
+      >
+        <span class="visually-hidden">Active Student</span>
+      </span>
+    </div>
+    <h1 class="fw-bold mb-1">{{ student.name }}</h1>
+    <p class="text-muted fs-5">{{ student.email }}</p>
+    <div class="d-flex justify-content-center gap-2">
+      <span class="badge bg-white text-dark border rounded-pill px-4 py-2"
+        >Dept: {{ student.department }}</span
+      >
+      <span class="badge bg-white text-dark border rounded-pill px-4 py-2"
+        >ID: {{ student.student_id }}</span
+      >
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-center">
+        <h6 class="text-uppercase text-muted small fw-bold mb-3">
+          Events Attended
+        </h6>
+        <h1 class="display-3 fw-bold text-primary mb-0">
+          {{ events_attended_count }}
+        </h1>
+        <p class="text-muted small">Total Participations</p>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-center">
+        <h6 class="text-uppercase text-muted small fw-bold mb-3">
+          Volunteered
+        </h6>
+        <h1 class="display-3 fw-bold text-success mb-0">
+          {{ events_volunteered_count }}
+        </h1>
+        <p class="text-muted small">Contribution Count</p>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h5 class="fw-bold mb-4">Student Details</h5>
+        <div class="mb-3">
+          <label class="text-muted small d-block">Personality Type</label>
+          <span class="fw-bold fs-5 text-uppercase"
+            >{{ student.personality_type|default:"NOT SET" }}</span
+          >
+        </div>
+        <div class="mb-1">
+          <label class="text-muted small d-block">Account Status</label>
+          <span class="text-success fw-bold"
+            ><i class="bi bi-patch-check-fill me-1"></i> Verified Student</span
+          >
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold mb-4">
+          <i class="bi bi-calendar-check me-2 text-primary"></i>Event History
+        </h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr class="text-muted small">
+                <th>EVENT NAME</th>
+                <th>CHECK-IN TIME</th>
+                <th class="text-center">YOUR RATING</th>
+                <th class="text-end">STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for reg in participated_events %}
+              <tr>
+                <td><span class="fw-bold">{{ reg.event.event_name }}</span></td>
+                <td class="text-muted">
+                  {{ reg.attendance_time|date:"M d, h:i A"|default:"N/A" }}
+                </td>
+                <td class="text-center">
+                  {% if reg.rating %}
+                  <span class="text-warning"
+                    >{{ reg.rating }} <i class="bi bi-star-fill small"></i
+                  ></span>
+                  {% else %}
+                  <span class="text-muted small">Not Rated</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <span class="badge bg-success-soft rounded-pill px-3"
+                    >{{ reg.attendance }}</span
+                  >
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center py-5 text-muted">
+                  No attendance records found.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h5 class="fw-bold mb-4">
+          <i class="bi bi-heart me-2 text-danger"></i>Volunteering Impact
+        </h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr class="text-muted small">
+                <th>ROLE / EVENT</th>
+                <th>CLUB</th>
+                <th class="text-end">CONTRIBUTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for vol in volunteered_events %}
+              <tr>
+                <td>
+                  <div class="fw-bold">{{ vol.event.event_name }}</div>
+                  <div class="small text-muted">Approved Volunteer</div>
+                </td>
+                <td>{{ vol.event.club.club_name }}</td>
+                <td class="text-end">
+                  <span class="badge bg-info-soft rounded-pill px-3"
+                    >Volunteer</span
+                  >
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="3" class="text-center py-5 text-muted">
+                  No volunteer records found.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm rounded-4 p-4 mt-4">
+        <h5 class="fw-bold mb-3">Skills & Expertise</h5>
+
+        <form action="{% url 'add_skill' %}" method="POST" class="mb-3">
+          {% csrf_token %}
+          <div class="input-group">
+            <input
+              type="text"
+              name="skill_name"
+              class="form-control form-control-sm border-end-0"
+              placeholder="Add a skill (e.g. Python)"
+              required
+            />
+            <button
+              class="btn btn-sm btn-outline-primary border-start-0"
+              type="submit"
+            >
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
+        </form>
+
+        <div class="d-flex flex-wrap gap-2">
+          {% for skill in skills %}
+          <div
+            class="badge bg-light text-dark border rounded-pill px-3 py-2 d-flex align-items-center"
+          >
+            {{ skill.skill }}
+            <a
+              href="{% url 'delete_skill' skill.skill_id %}"
+              class="text-danger ms-2 text-decoration-none"
+            >
+              <i class="bi bi-x-circle-fill" style="font-size: 0.8rem"></i>
+            </a>
+          </div>
+          {% empty %}
+          <p class="text-muted small">No skills added yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

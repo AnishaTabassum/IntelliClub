@@ -1,134 +1,147 @@
-{% extends "dashboard/base.html" %} {% load static %} {% block content %}
-<div class="container-fluid py-4">
+{% extends "dashboard/base.html" %} 
+{% load static %} 
+{% block content %}
+<style>
+  .bg-primary-soft { background-color: #e3f2fd; color: #0d6efd; }
+  .action-card { 
+    border-radius: 20px !important; 
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.05) !important;
+  }
+  .action-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; }
+  .icon-box { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
+</style>
+
+<div class="container-fluid py-4 px-5">
   <div class="d-flex justify-content-between align-items-center mb-5">
     <div>
-      <h2 class="fw-bold fs-1">
-        {{ club.club_name }}
-        <span class="text-muted fs-4">| Executive Portal</span>
-      </h2>
-      <p class="badge bg-primary rounded-pill">Role: {{ role }}</p>
+      <h1 class="fw-bold mb-1">{{ club.club_name }}</h1>
+      <span class="badge bg-primary-soft rounded-pill px-3 py-2">
+        <i class="bi bi-shield-lock me-2"></i>Executive Portal: {{ role }}
+      </span>
     </div>
-    <a
-      href="{% url 'create_event_page' club.club_id %}"
-      class="btn btn-dark rounded-pill px-4 shadow-sm"
-    >
-      <i class="bi bi-plus-lg me-2"></i>Create New Event
-    </a>
-  </div>
-
-  <div
-    class="card border-0 shadow-sm p-4 mb-4"
-    style="border-radius: 20px; background: #f8f9fa"
-  >
-    <div class="d-flex justify-content-between align-items-center">
-      <div>
-        <h5 class="fw-bold mb-1">Recruitment Status</h5>
-        <p class="text-muted small mb-0">
-          Currently:
-          <span
-            class="fw-bold {% if club.reg_open %}text-success{% else %}text-danger{% endif %}"
-          >
-            {% if club.reg_open %}OPEN{% else %}CLOSED{% endif %}
-          </span>
-        </p>
-      </div>
-      <form action="{% url 'toggle_registration' club.club_id %}" method="POST">
-        {% csrf_token %}
-        <button
-          type="submit"
-          class="btn {% if club.reg_open %}btn-outline-danger{% else %}btn-success{% endif %} rounded-pill px-4"
-        >
-          {% if club.reg_open %} Close Registration {% else %} Open Registration
-          {% endif %}
+    <div class="d-flex gap-3">
+        <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#createAlertModal">
+          <i class="bi bi-megaphone me-2"></i>Broadcast
         </button>
-      </form>
-    </div>
-  </div>
-
-  <div class="card p-4 rounded-4 border-0 shadow-sm mt-4">
-    <h5 class="fw-bold mb-4">Member Registration Requests</h5>
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead>
-          <tr class="text-muted small">
-            <th>Student Name</th>
-            <th>Email</th>
-            <th class="text-end">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for req in pending_requests %}
-          <tr>
-            <td>{{ req.student.name }}</td>
-            <td>{{ req.student.email }}</td>
-            <td class="text-end">
-              <form
-                action="{% url 'approve_registration' req.registration_id %}"
-                method="POST"
-              >
-                {% csrf_token %}
-                <button
-                  type="submit"
-                  class="btn btn-primary btn-sm rounded-pill px-3"
-                >
-                  Approve Member
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="3" class="text-center py-4 text-muted">
-              No pending member requests.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px;">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="fw-bold mb-1">Manage Club Events</h5>
-            <p class="text-muted small mb-0">View event details, manage attendees, and process registrations.</p>
-        </div>
-        <a href="{% url 'club_events_list' club.club_id %}" class="btn btn-dark rounded-pill px-4 shadow-sm">
-            View All Events
+        <a href="{% url 'asset_management' club.club_id %}" class="btn btn-dark rounded-pill px-4">
+          <i class="bi bi-box-seam me-2"></i>Assets
         </a>
     </div>
-</div>
+  </div>
 
-  <div class="card border-0 shadow-sm p-4 mt-4" style="border-radius: 20px">
-    <h5 class="fw-bold mb-4">Current Members</h5>
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead class="table-light">
-          <tr class="text-muted small text-uppercase">
-            <th>Member Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th class="text-end">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for mem in all_members %}
-          <tr>
-            <td><span class="fw-bold">{{ mem.student.name }}</span></td>
-            <td class="text-muted">{{ mem.student.email }}</td>
-            <td>
-              <span
-                class="badge {% if mem.role == 'President' %}bg-primary{% else %}bg-secondary{% endif %} rounded-pill"
-              >
-                {{ mem.role }}
-              </span>
-            </td>
-            <td class="text-end text-success small fw-bold">Active</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <div class="row g-4 mb-4">
+    <div class="col-md-4">
+      <div class="card action-card shadow-sm p-4 h-100">
+        <div class="icon-box bg-success-soft text-success">
+          <i class="bi bi-person-plus-fill fs-4"></i>
+        </div>
+        <h6 class="text-muted small fw-bold text-uppercase">Recruitment Status</h6>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <h3 class="fw-bold mb-0 {% if club.reg_open %}text-success{% else %}text-danger{% endif %}">
+            {% if club.reg_open %}Open{% else %}Closed{% endif %}
+          </h3>
+          <form action="{% url 'toggle_registration' club.club_id %}" method="POST">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-dark rounded-pill px-3">Toggle</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card action-card shadow-sm p-4 h-100 bg-dark text-white border-0">
+        <div class="icon-box bg-white text-dark">
+          <i class="bi bi-calendar-event fs-4"></i>
+        </div>
+        <h6 class="text-white-50 small fw-bold text-uppercase">Events Management</h6>
+        <div class="mt-2">
+          <a href="{% url 'create_event_page' club.club_id %}" class="btn btn-light w-100 rounded-pill fw-bold">
+            <i class="bi bi-plus-lg me-1"></i>Create New Event
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card action-card shadow-sm p-4 h-100">
+        <div class="icon-box bg-primary-soft text-primary">
+          <i class="bi bi-graph-up-arrow fs-4"></i>
+        </div>
+        <h6 class="text-muted small fw-bold text-uppercase">Analysis</h6>
+        <div class="mt-2">
+            <a href="{% url 'club_events_list' club.club_id %}" class="btn btn-outline-primary w-100 rounded-pill">
+                View Event Reports
+            </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold mb-4">Pending Requests</h5>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <tbody class="small">
+              {% for req in pending_requests %}
+              <tr>
+                <td><strong>{{ req.student.name }}</strong><br><span class="text-muted">{{ req.student.email }}</span></td>
+                <td class="text-end">
+                  <form action="{% url 'approve_registration' req.registration_id %}" method="POST">
+                    {% csrf_token %}
+                    <button class="btn btn-primary btn-sm rounded-pill px-3">Approve</button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td class="text-center py-4 text-muted">No pending member requests.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h5 class="fw-bold mb-4">Active Roster</h5>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light small">
+                <tr><th>Member</th><th>Role</th><th class="text-end">Status</th></tr>
+            </thead>
+            <tbody class="small">
+              {% for mem in all_members %}
+              <tr>
+                <td><strong>{{ mem.student.name }}</strong></td>
+                <td><span class="badge bg-light text-dark rounded-pill">{{ mem.role }}</span></td>
+                <td class="text-end text-success fw-bold">Active</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+        <h5 class="fw-bold mb-4">Broadcast History</h5>
+        {% for alert in alerts %}
+        <div class="p-3 mb-3 border rounded-4 d-flex justify-content-between align-items-start">
+          <div>
+            <div class="fw-bold">{{ alert.subject }}</div>
+            <div class="small text-muted">{{ alert.created_at|date:"M d, Y" }}</div>
+          </div>
+          <form action="{% url 'delete_alert' alert.alert_id %}" method="POST">
+            {% csrf_token %}
+            <button class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted small">No alerts sent yet.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 </div>

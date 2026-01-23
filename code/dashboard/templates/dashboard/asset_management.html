@@ -1,0 +1,229 @@
+{% extends "dashboard/base.html" %} 
+{% block content %}
+<style>
+    /* Global Minimal Table Overrides */
+    .table-minimal {
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid #e9ecef !important; /* Crisp 1px outer border */
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .table-minimal thead th {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef !important;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        padding: 1rem 0.75rem;
+    }
+    .table-minimal td {
+        border-bottom: 1px solid #f1f3f5 !important;
+        padding: 1rem 0.75rem;
+        background-color: #ffffff;
+    }
+    .table-minimal tr:last-child td {
+        border-bottom: none !important;
+    }
+    /* Subtle Hover for Rows */
+    .table-minimal tbody tr:hover td {
+        background-color: #fafbfc;
+    }
+    /* Specific adjustment for buttons in tables */
+    .btn-table-action {
+        font-size: 0.75rem;
+        transition: all 0.2s;
+    }
+</style>
+
+<div class="container-fluid py-4 px-5">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1 text-dark">Asset Management</h2>
+            <p class="text-muted small mb-0">Inventory & Loan Portal for {{ club.club_name }}</p>
+        </div>
+        <span class="badge bg-white text-dark border border-1 rounded-pill px-4 py-2 shadow-sm">
+            {{ club.club_name }}
+        </span>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
+                        <i class="bi bi-shop" style="font-size: 0.9rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">Marketplace (External Assets)</h5>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-borderless table-minimal mb-0">
+                        <thead class="text-muted text-uppercase">
+                            <tr>
+                                <th class="ps-3">Asset Name</th>
+                                <th>Owner Club</th>
+                                <th>Category</th>
+                                <th class="text-end pe-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asset in other_assets %}
+                            <tr>
+                                <td class="fw-bold ps-3 text-dark">{{ asset.asset_name }}</td>
+                                <td class="text-secondary small">{{ asset.club.club_name }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border-0 fw-normal rounded-pill px-3">
+                                        {{ asset.category }}
+                                    </span>
+                                </td>
+                               <td class="text-end pe-3">
+                                    {% if asset.asset_id in already_requested_ids %}
+                                        <button class="btn btn-sm btn-light border-1 rounded-pill px-4 text-muted fw-semibold" disabled>
+                                            <i class="bi bi-clock-history me-1"></i> Pending
+                                        </button>
+                                    {% else %}
+                                        <form action="{% url 'request_borrow' asset.asset_id %}" method="POST" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-dark rounded-pill px-4 fw-bold">Request</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted small">No external assets available.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">Lend Requests</h5>
+                    {% if lend_requests %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-2 fw-bold" style="font-size: 0.65rem;">
+                            {{ lend_requests.count }} PENDING
+                        </span>
+                    {% endif %}
+                </div>
+
+                {% for loan in lend_requests %}
+                <div class="d-flex justify-content-between align-items-center p-3 border rounded-3 mb-2 bg-white" style="border-color: #e9ecef !important;">
+                    <div>
+                        <div class="fw-bold text-dark small">{{ loan.asset.asset_name }}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">From: {{ loan.borrower_member.student.name }}</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <form action="{% url 'reject_loan' loan.loan_id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 border-1 fw-bold" style="font-size: 0.7rem;">Reject</button>
+                        </form>
+                        <form action="{% url 'approve_loan' loan.loan_id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" style="font-size: 0.7rem;">Approve</button>
+                        </form>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5 border rounded-3 bg-light bg-opacity-50" style="border-style: dashed !important;">
+                    <span class="text-muted small">All clear! No pending requests.</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-arrow-up-right me-2 text-primary"></i>Outgoing (Lended)</h6>
+                <div class="small">
+                    {% for loan in currently_lended %}
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-light">
+                        <span class="text-secondary"><strong class="text-dark">{{ loan.asset.asset_name }}</strong> → {{ loan.borrower_member.club.club_name }}</span>
+                        <form action="{% url 'return_asset' loan.loan_id %}" method="POST">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-link text-primary text-decoration-none p-0 fw-bold" style="font-size: 0.75rem;">Confirm Return</button>
+                        </form>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small mb-0">No active outgoing loans.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-arrow-down-left me-2 text-success"></i>Incoming (Borrowed)</h6>
+                <div class="small">
+                    {% for loan in currently_borrowed %}
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-light">
+                        <span class="text-secondary"><strong class="text-dark">{{ loan.asset.asset_name }}</strong> ← {{ loan.asset.club.club_name }}</span>
+                        <form action="{% url 'return_asset' loan.loan_id %}" method="POST">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-dark rounded-pill px-3 py-0" style="font-size: 0.7rem;">Return</button>
+                        </form>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small mb-0">No active incoming loans.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
+                        <i class="bi bi-box-seam" style="font-size: 0.9rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">Your Club Inventory</h5>
+                </div>
+
+                <form action="{% url 'add_asset' club.club_id %}" method="POST" class="mb-4 bg-light p-2 rounded-3">
+                    {% csrf_token %}
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-6"><input type="text" name="asset_name" class="form-control border-0 bg-white" placeholder="Asset name..." required></div>
+                        <div class="col-md-4">
+                            <select name="category" class="form-select border-0 bg-white" required>
+                                <option value="" selected disabled>Category</option>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Furniture">Furniture</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2"><button type="submit" class="btn btn-dark w-100 rounded-pill fw-bold">Add Item</button></div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-borderless table-minimal mb-0">
+                        <thead class="text-muted text-uppercase">
+                            <tr>
+                                <th class="ps-3">Asset Name</th>
+                                <th>Category</th>
+                                <th class="text-end pe-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asset in my_assets %}
+                            <tr>
+                                <td class="fw-semibold ps-3 text-dark">{{ asset.asset_name }}</td>
+                                <td><span class="badge bg-white text-secondary border border-1 rounded-pill px-3">{{ asset.category }}</span></td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm text-muted p-1"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-sm text-danger p-1"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-4 text-muted small">Inventory is empty.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

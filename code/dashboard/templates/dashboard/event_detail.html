@@ -7,6 +7,9 @@
   .badge-partner { background: #f8f9fa; color: #333; border: 1px solid #eee; }
   .text-dark-soft { color: #222; }
   .bg-subtle-light { background-color: #fafafa; }
+  
+  /* Style for disabled buttons to show reason on hover */
+  button:disabled { cursor: not-allowed; pointer-events: all !important; }
 </style>
 
 <div class="container py-4">
@@ -85,16 +88,23 @@
             <i class="bi bi-clock-history me-2"></i> <small class="fw-bold">REQUEST PENDING</small>
           </div>
           {% else %}
-          <div class="alert bg-dark text-white text-center border-0 rounded-4 mb-3">
+          <div class="alert bg-success text-white text-center border-0 rounded-4 mb-3">
             <i class="bi bi-check-circle-fill me-2"></i> <small class="fw-bold">CONFIRMED</small>
           </div>
           {% endif %} 
         {% else %}
         <form method="POST" class="mb-3">
           {% csrf_token %}
-          <button type="submit" name="action" value="attend" class="btn btn-dark w-100 rounded-pill py-3 fw-bold shadow-sm">
+          <button type="submit" name="action" value="attend" 
+                  class="btn btn-dark w-100 rounded-pill py-3 fw-bold shadow-sm"
+                  {% if is_volunteer %} disabled title="Volunteers cannot register as attendees" {% endif %}>
             Register to Attend
           </button>
+          {% if is_volunteer %}
+            <small class="text-danger d-block text-center mt-2" style="font-size: 0.7rem;">
+                Disabled: You cannot apply for volunteer and attendee at the same time.
+            </small>
+          {% endif %}
         </form>
         {% endif %}
 
@@ -104,23 +114,30 @@
         </div>
 
         {% if is_volunteer %} 
-          <button class="btn btn-outline-dark w-100 rounded-pill py-3 fw-bold mb-3" disabled>
-            {% if vol_object.role == 'Pending' %}
+          {% if vol_object.role == 'Pending' %}
+          <button class="btn btn-outline-warning w-100 rounded-pill py-3 fw-bold mb-3" disabled>
               <i class="bi bi-hourglass-split me-2"></i>Volunteer Pending
-            {% else %}
-              <i class="bi bi-patch-check me-2"></i>Active Volunteer
-            {% endif %}
           </button>
+          {% else %}
+          <button class="btn btn-success w-100 rounded-pill py-3 fw-bold mb-3" disabled>
+              <i class="bi bi-patch-check me-2"></i>Active Volunteer
+            </button>
+          {% endif %}
         {% else %}
         <form method="POST">
           {% csrf_token %}
           <input type="hidden" name="action" value="volunteer" />
-          <button type="submit" class="btn btn-outline-dark w-100 rounded-pill py-3 fw-bold mb-3">
+          <button type="submit" class="btn btn-outline-dark w-100 rounded-pill py-3 fw-bold mb-3"
+                  {% if is_registered %} disabled title="Attendees cannot apply to volunteer" {% endif %}>
             <i class="bi bi-person-plus me-2"></i>Volunteer for Event
           </button>
+          {% if is_registered %}
+            <small class="text-danger d-block text-center mb-3" style="font-size: 0.7rem;">
+                Disabled: You cannot apply for volunteer and attendee at the same time.
+            </small>
+          {% endif %}
         </form>
         {% endif %}
-        
         
         <p class="text-center text-muted small mt-2 mb-0" style="font-size: 0.75rem;">
             Questions? Contact the club host.
@@ -128,43 +145,111 @@
       </div>
     </div>
   </div>
-      {% if can_review %}
+
+  {% if can_review %}
+  <div class="card border-0 shadow-sm rounded-4 p-4 mt-5">
+      <div class="d-flex align-items-center mb-3">
+          <i class="bi bi-chat-left-text me-2 fs-5"></i>
+          <h5 class="fw-bold mb-0">Share Your Feedback</h5>
+      </div>
+      
+      <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="submit_feedback">
+          
+          <div class="row">
+              <div class="col-md-4 mb-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Rating</label>
+                  <select name="rating" class="form-select border-0 bg-light rounded-3" required>
+                      <option value="" disabled {% if not reg_object.rating %}selected{% endif %}>Select Score</option>
+                      <option value="5" {% if reg_object.rating == 5 %}selected{% endif %}>5 - Excellent</option>
+                      <option value="4" {% if reg_object.rating == 4 %}selected{% endif %}>4 - Very Good</option>
+                      <option value="3" {% if reg_object.rating == 3 %}selected{% endif %}>3 - Good</option>
+                      <option value="2" {% if reg_object.rating == 2 %}selected{% endif %}>2 - Fair</option>
+                      <option value="1" {% if reg_object.rating == 1 %}selected{% endif %}>1 - Poor</option>
+                  </select>
+              </div>
+              <div class="col-12 mb-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Your Comment</label>
+                  <textarea name="comment" class="form-control border-0 bg-light rounded-3" rows="3" placeholder="What did you think of the event?">{{ reg_object.comment|default:"" }}</textarea>
+              </div>
+          </div>
+          
+          <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">
+              {% if reg_object.rating %}Update Feedback{% else %}Submit Feedback{% endif %}
+          </button>
+      </form>
+  </div>
+  {% elif is_registered and reg_object.payment_status == 'Unpaid' %}
+  <div class="alert alert-light border-0 rounded-4 mt-4 small text-muted">
+      <i class="bi bi-info-circle me-2"></i> You can leave a review once your registration is confirmed by the admin.
+  </div>
+  {% endif %}
+  {% if is_approved_volunteer %}
 <div class="card border-0 shadow-sm rounded-4 p-4 mt-5">
-    <div class="d-flex align-items-center mb-3">
-        <i class="bi bi-chat-left-text me-2 fs-5"></i>
-        <h5 class="fw-bold mb-0">Share Your Feedback</h5>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h5 class="fw-bold mb-0">Expense Management</h5>
+            <small class="text-muted">Logged as Authorized Volunteer</small>
+        </div>
+        <div class="text-end">
+            <span class="small fw-bold text-muted text-uppercase d-block">Budget Allocated</span>
+            <span class="h5 fw-bold text-dark">৳ {{ vol_object.budget_allocated|default:"0" }}</span>
+        </div>
+    </div>
+
+    <div class="mb-4">
+    <div class="d-flex justify-content-between small mb-1">
+        <span>Spent: ৳ {{ total_spent }}</span>
+        <span>Remaining: ৳ {{ remaining_budget }}</span>
+    </div>
+    <div class="progress" style="height: 10px; border-radius: 10px;">
+        <div class="progress-bar bg-dark" role="progressbar" 
+             style="width: {% if vol_object.budget_allocated > 0 %}{% widthratio total_spent vol_object.budget_allocated 100 %}{% else %}0{% endif %}%">
+        </div>
+    </div>
+</div>
+    <form method="POST" class="row g-2 bg-light p-3 rounded-4 mb-4">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_expense">
+    
+    <div class="col-md-7">
+        <input type="text" name="description" class="form-control border-0 bg-white" 
+               placeholder="What was this for?" required minlength="3">
     </div>
     
-    <form method="POST">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="submit_feedback">
-        
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label small fw-bold text-muted text-uppercase">Rating</label>
-                <select name="rating" class="form-select border-0 bg-light rounded-3" required>
-                    <option value="" disabled {% if not reg_object.rating %}selected{% endif %}>Select Score</option>
-                    <option value="5" {% if reg_object.rating == 5 %}selected{% endif %}>5 - Excellent</option>
-                    <option value="4" {% if reg_object.rating == 4 %}selected{% endif %}>4 - Very Good</option>
-                    <option value="3" {% if reg_object.rating == 3 %}selected{% endif %}>3 - Good</option>
-                    <option value="2" {% if reg_object.rating == 2 %}selected{% endif %}>2 - Fair</option>
-                    <option value="1" {% if reg_object.rating == 1 %}selected{% endif %}>1 - Poor</option>
-                </select>
-            </div>
-            <div class="col-12 mb-3">
-                <label class="form-label small fw-bold text-muted text-uppercase">Your Comment</label>
-                <textarea name="comment" class="form-control border-0 bg-light rounded-3" rows="3" placeholder="What did you think of the event?">{{ reg_object.comment|default:"" }}</textarea>
-            </div>
+    <div class="col-md-3">
+        <div class="input-group">
+            <span class="input-group-text border-0 bg-white text-muted">৳</span>
+            <input type="number" name="amount" class="form-control border-0 bg-white" 
+                   placeholder="Amount" required min="1" step="1">
         </div>
-        
-        <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">
-            {% if reg_object.rating %}Update Feedback{% else %}Submit Feedback{% endif %}
-        </button>
+    </div>
+    
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-dark w-100 rounded-pill fw-bold shadow-sm">Add</button>
+    </div>
     </form>
-</div>
-{% elif is_registered and reg_object.payment_status == 'Unpaid' %}
-<div class="alert alert-light border-0 rounded-4 mt-4 small text-muted">
-    <i class="bi bi-info-circle me-2"></i> You can leave a review once your registration is confirmed by the admin.
+    <div class="table-responsive">
+        <table class="table table-sm align-middle small mb-0">
+            <thead class="text-muted text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">
+                <tr>
+                    <th class="py-2">Description</th>
+                    <th class="py-2 text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in volunteer_expenses %}
+                <tr>
+                    <td class="py-2 text-dark">{{ expense.description }}</td>
+                    <td class="py-2 text-end fw-bold text-dark-soft">৳ {{ expense.amount }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="text-center py-3 text-muted">No expenses logged yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endif %}
 </div>

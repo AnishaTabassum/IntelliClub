@@ -57,13 +57,13 @@
           <span class="close">&times;</span>
           <h2>Student Registration</h2>
 
-          {% if messages %} {% for message in messages %}
-          <div
-            class="alert-box {% if message.tags == 'error' %}error{% endif %}"
-          >
-            {{ message }}
-          </div>
-          {% endfor %} {% endif %}
+          {% if messages %}
+          {% for message in messages %}
+            {% if "Registration" in message.message or "Student" in message.message %}
+              <div class="alert-box error">{{ message }}</div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
 
           <form method="POST" action="{% url 'register' %}">
             {% csrf_token %}

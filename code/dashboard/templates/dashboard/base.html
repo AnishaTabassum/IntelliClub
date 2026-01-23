@@ -214,18 +214,13 @@
       <div class="d-flex justify-content-between align-items-center">
         <ul class="nav nav-tabs">
           <li class="nav-item">
-            <a
-              href="{% url 'home' %}"
-              class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
-              >Events</a
-            >
+            <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Events</a>
           </li>
           <li class="nav-item">
-            <a
-              href="{% url 'all_clubs' %}"
-              class="nav-link {% if request.resolver_match.url_name == 'all_clubs' %}active{% endif %}"
-              >All Clubs</a
-            >
+            <a href="{% url 'all_clubs' %}" class="nav-link {% if request.resolver_match.url_name == 'all_clubs' %}active{% endif %}">All Clubs</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Profile</a>
           </li>
         </ul>
 

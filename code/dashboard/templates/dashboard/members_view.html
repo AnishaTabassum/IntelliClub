@@ -33,6 +33,34 @@
     </div>
   </div>
 
+  <div class="card border-0 shadow-sm rounded-4 p-4 mt-4">
+    <h5 class="fw-bold mb-4"><i class="bi bi-bell me-2"></i>Club Announcements</h5>
+    
+    <div class="accordion" id="alertsAccordion">
+    {% for alert in alerts %}
+    <div class="accordion-item border-0 mb-2 shadow-sm rounded-3 overflow-hidden">
+        <h2 class="accordion-header" id="heading{{ alert.alert_id }}">
+            <button class="accordion-button collapsed fw-bold" type="button" 
+                    data-bs-toggle="collapse" data-bs-target="#collapse{{ alert.alert_id }}">
+                <i class="bi bi-exclamation-circle-fill me-2 text-danger"></i>
+                {{ alert.subject }}
+            </button>
+        </h2>
+        <div id="collapse{{ alert.alert_id }}" class="accordion-collapse collapse" 
+             aria-labelledby="heading{{ alert.alert_id }}" data-bs-parent="#alertsAccordion">
+            <div class="accordion-body bg-light">
+                <p class="mb-2" style="white-space: pre-wrap;">{{ alert.message }}</p>
+                <hr class="opacity-25">
+                <small class="text-muted">
+                    Posted by {{ alert.club.club_name }} on {{ alert.created_at|date:"M d, Y" }}
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+</div>
+
   <div class="card border-0 shadow-sm p-4" style="border-radius: 20px">
     <h5 class="fw-bold mb-4">Club Members</h5>
     <div class="table-responsive">

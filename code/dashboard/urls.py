@@ -37,4 +37,18 @@ urlpatterns = [
 
     path('approve-volunteer/<int:vol_id>/', views.approve_volunteer, name='approve_volunteer'),
     path('reject-volunteer/<int:vol_id>/', views.reject_volunteer, name='reject_volunteer'),
+
+    path('create-alert/', views.create_alert, name='create_alert'),
+    path('delete-alert/<int:alert_id>/', views.delete_alert, name='delete_alert'),
+    path('profile/', views.profile_view, name='profile'),
+    path('profile/add-skill/', views.add_skill, name='add_skill'),
+    path('profile/delete-skill/<int:skill_id>/', views.delete_skill, name='delete_skill'),
+
+    path('club/<int:club_id>/assets/', views.asset_management, name='asset_management'),
+    path('assets/borrow/<int:asset_id>/', views.request_borrow, name='request_borrow'),
+    path('assets/approve/<int:loan_id>/', views.approve_loan, name='approve_loan'),
+    path('assets/return/<int:loan_id>/', views.return_asset, name='return_asset'),
+    path('loans/reject/<int:loan_id>/', views.reject_loan, name='reject_loan'),
+    path('club/<int:club_id>/assets/add/', views.add_asset, name='add_asset'),
+    path('loans/return/<int:loan_id>/', views.return_asset, name='return_asset'),
 ]
