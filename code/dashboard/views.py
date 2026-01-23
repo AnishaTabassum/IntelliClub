@@ -691,9 +691,13 @@ def asset_management(request, club_id):
         status='Pending'
     ).values_list('asset_id', flat=True))
 
+    unavailable_asset_ids = Loans.objects.filter(
+        status__in=['Approved']
+    ).values_list('asset_id', flat=True)
+
     # 2. Marketplace & Inventory
     my_assets = Assets.objects.filter(club=current_view_club)
-    other_assets = Assets.objects.exclude(club=current_view_club)
+    other_assets = Assets.objects.exclude(club=current_view_club).exclude(asset_id__in=unavailable_asset_ids)
     
     # 3. Lend Requests (Requests awaiting THIS club's approval)
     lend_requests = Loans.objects.filter(asset__club=current_view_club, status='Pending')
@@ -728,26 +732,23 @@ def asset_management(request, club_id):
 def request_borrow(request, asset_id, club_id):
     asset = get_object_or_404(Assets, asset_id=asset_id)
     
-    # Get the specific member profile for the club currently being viewed
-    borrower_profile = get_object_or_404(
-        ClubsMembers, 
+    # FIX: Change asset=asset.asset to asset=asset
+    is_already_lent = Loans.objects.filter(asset=asset, status='Approved').exists()
+
+    if is_already_lent:
+        messages.error(request, f"Sorry, {asset.asset_name} is currently unavailable.")
+        return redirect('asset_management', club_id=club_id)
+
+    borrower_member = ClubsMembers.objects.get(
         student__email__user_email=request.user.user_email, 
         club_id=club_id
     )
-
-    # Simple check to prevent self-borrowing
-    if asset.club_id == borrower_profile.club_id:
-        messages.error(request, "You cannot borrow from your own club.")
-        return redirect('asset_management', club_id=club_id)
-
-    # Create the loan linked specifically to the club profile being used
+    
     Loans.objects.create(
         asset=asset,
-        borrower_member=borrower_profile,
+        borrower_member=borrower_member,
         status='Pending'
     )
-    
-    messages.success(request, f"Request sent for {asset.asset_name}")
     return redirect('asset_management', club_id=club_id)
 
 @login_required
@@ -756,18 +757,25 @@ def approve_loan(request, loan_id):
         loan = get_object_or_404(Loans, loan_id=loan_id)
         
         # Identify the executive member of the club that owns the asset
+        # Note: We use .user_email to match your custom user model
         approver = ClubsMembers.objects.filter(
             student__email__user_email=request.user.user_email, 
             club=loan.asset.club
         ).first()
         
         if approver:
+            # Check if someone else was approved while this request was pending
+            already_lent = Loans.objects.filter(asset=loan.asset, status='Approved').exists()
+            if already_lent:
+                messages.error(request, "This item is already lent to another club.")
+                return redirect(request.META.get('HTTP_REFERER'))
+
             loan.status = 'Approved'
-            loan.lender_member = approver  # This saves the Lender_Member_ID
+            loan.lender_member = approver  # Saves the lender_member_id
             loan.save()
             messages.success(request, f"Loan for {loan.asset.asset_name} approved.")
         else:
-            messages.error(request, "You do not have permission to approve this.")
+            messages.error(request, "Permission denied.")
             
     return redirect(request.META.get('HTTP_REFERER', 'asset_management'))
 
@@ -776,7 +784,7 @@ def reject_loan(request, loan_id):
     if request.method == "POST":
         loan = get_object_or_404(Loans, loan_id=loan_id)
         
-        # Track who rejected the loan
+        # Identify the member performing the rejection
         rejector = ClubsMembers.objects.filter(
             student__email__user_email=request.user.user_email, 
             club=loan.asset.club
@@ -784,7 +792,7 @@ def reject_loan(request, loan_id):
         
         if rejector:
             loan.status = 'Rejected'
-            loan.lender_member = rejector # Saves ID even on rejection
+            loan.lender_member = rejector  # Track who rejected it
             loan.save()
             messages.info(request, "Loan request rejected.")
             
