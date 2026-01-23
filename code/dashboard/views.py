@@ -44,7 +44,6 @@ def register_view(request):
             return render(request, 'dashboard/login.html', {'show_register_modal': True})
         
     if request.method == "POST":
-        # Get data from form
         sid = request.POST.get('student_id')
         name = request.POST.get('name')
         email = request.POST.get('email')
@@ -337,7 +336,7 @@ def create_event_page(request, club_id):
                 budget_share=int(shares[i+1]) if shares[i+1] else 0
             )
 
-        return redirect('exec_dashboard', club_id=club_id)
+        return redirect('club_dashboard', club_id=club_id)
 
     all_clubs = Clubs.objects.exclude(club_id=club_id)
     return render(request, 'dashboard/create_event.html', {

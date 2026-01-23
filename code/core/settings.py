@@ -90,7 +90,7 @@ AUTH_USER_MODEL = 'dashboard.Users'
 
 
 AUTHENTICATION_BACKENDS = [
-    'dashboard.backends.EmailBackend', # Make sure this path is correct
+    'dashboard.backends.EmailBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
@@ -119,9 +119,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'nlabibs2003@gmail.com'
-EMAIL_HOST_PASSWORD = 'qvlb pzbx dhva zpuw'  # Not your login password!
-DEFAULT_FROM_EMAIL = 'IntelliClub <nlabibs2003@gmail.com>'
+EMAIL_HOST_USER = 'your-club-email@gmail.com'
+EMAIL_HOST_PASSWORD = 'your-app-password' 
+DEFAULT_FROM_EMAIL = 'IntelliClub <your-club-email@gmail.com>'
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/

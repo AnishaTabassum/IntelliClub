@@ -1,7 +1,6 @@
 {% extends "dashboard/base.html" %} 
 {% block content %}
 <style>
-    /* Global Minimal Table Overrides */
     .table-minimal {
         border-collapse: separate;
         border-spacing: 0;
@@ -25,11 +24,9 @@
     .table-minimal tr:last-child td {
         border-bottom: none !important;
     }
-    /* Subtle Hover for Rows */
     .table-minimal tbody tr:hover td {
         background-color: #fafbfc;
     }
-    /* Specific adjustment for buttons in tables */
     .btn-table-action {
         font-size: 0.75rem;
         transition: all 0.2s;

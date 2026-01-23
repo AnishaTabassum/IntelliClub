@@ -1,4 +1,16 @@
 {% extends "dashboard/base.html" %} {% block content %}
+<style>
+  .event-card-hover {
+    transition: all 0.2s ease;
+  }
+  .event-card-hover:hover {
+    transform: translateY(-5px);
+    border-color: #000 !important;
+  }
+  .w-fit {
+    width: fit-content;
+  }
+</style>
 
 <div class="mb-5">
   <h2 class="fw-bold fs-1 mb-4">Discover Events</h2>
@@ -54,18 +66,4 @@
   </div>
   {% endfor %}
 </div>
-
-<style>
-  .event-card-hover {
-    transition: all 0.2s ease;
-  }
-  .event-card-hover:hover {
-    transform: translateY(-5px);
-    border-color: #000 !important;
-  }
-  .w-fit {
-    width: fit-content;
-  }
-</style>
-
 {% endblock %}

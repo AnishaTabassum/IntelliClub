@@ -1,7 +1,6 @@
 {% extends "dashboard/base.html" %} {% block content %}
 
 <style>
-  /* Subtle lift effect for the focus cards */
   .event-card-link {
     text-decoration: none !important;
     display: block;
@@ -17,7 +16,6 @@
     border: 1px solid #000 !important;
   }
 
-  /* Icon circle styling matching your brand */
   .card-icon-circle {
     width: 60px;
     height: 60px;
@@ -29,7 +27,6 @@
     border: 2px solid #000;
   }
 
-  /* Animation for the arrow on hover */
   .btn-get-started i {
     transition: transform 0.2s ease;
   }
@@ -133,8 +130,7 @@
                 {{ reg.event.event_date|date:"M d, Y" }}
               </div>
               <div class="text-muted small">
-                <i class="bi bi-clock me-1"></i>{{
-                reg.event.event_date|date:"h:i A" }}
+                <i class="bi bi-clock me-1"></i>{{reg.event.event_date|date:"h:i A" }}
               </div>
               <small style="font-size: 0.75rem"
                 >{{ reg.event.event_time }}</small
