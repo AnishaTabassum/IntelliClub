@@ -1,0 +1,286 @@
+{% extends "dashboard/base.html" %} {% load static %} {% block content %}
+<style>
+  .card {
+    border: 1px solid #f0f0f0 !important;
+  }
+  .text-dark-soft {
+    color: #444;
+  }
+  .badge-soft {
+    background: transparent;
+    border: 1px solid #e0e0e0;
+    color: #666;
+    font-weight: 500;
+  }
+  /* Vertical alignment for table content */
+  .table align-middle td,
+  .table align-middle th {
+    vertical-align: middle;
+  }
+</style>
+
+<div class="container py-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item">
+        <a
+          href="{% url 'club_dashboard' club.club_id %}"
+          class="text-decoration-none"
+          >Dashboard</a
+        >
+      </li>
+      <li class="breadcrumb-item">
+        <a
+          href="{% url 'club_events_list' club.club_id %}"
+          class="text-decoration-none"
+          >Events</a
+        >
+      </li>
+      <li class="breadcrumb-item active">Manage</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-end mb-5">
+    <div>
+      <h1 class="fw-bold h2 mb-2 text-dark">{{ event.event_name }}</h1>
+      <div class="d-flex gap-4 text-muted small">
+        <span
+          ><i class="bi bi-calendar3 me-2"></i>{{ event.event_date|date:"M d, Y"}}</span
+        >
+        <span
+          ><i class="bi bi-geo-alt me-2"></i>{{ event.venue|default:"Venue TBA"}}</span
+        >
+      </div>
+    </div>
+    <div class="text-end">
+      <span class="badge badge-soft rounded-pill px-3 py-2 border-2 bg-light">
+        {{ confirmed_attendees.count }} Confirmed
+      </span>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+          <h6 class="fw-bold mb-0 text-dark text-uppercase small ls-wide">
+            Registration Requests
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr class="small text-muted border-bottom">
+                  <th class="fw-medium py-3">Student</th>
+                  <th class="text-end fw-medium py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for req in pending_requests %}
+                <tr class="border-bottom-0">
+                  <td class="py-3">
+                    <span class="fw-bold d-block text-dark-soft"
+                      >{{ req.student.name }}</span
+                    >
+                    <small class="text-muted">{{ req.student.email }}</small>
+                  </td>
+                  <td class="text-end py-3">
+                    <div class="d-flex justify-content-end gap-2">
+                      <form
+                        action="{% url 'approve_event_reg' req.registration_id %}"
+                        method="POST"
+                      >
+                        {% csrf_token %}
+                        <button
+                          type="submit"
+                          class="btn btn-dark btn-sm rounded-pill px-3"
+                        >
+                          Accept
+                        </button>
+                      </form>
+                      <form
+                        action="{% url 'reject_event_reg' req.registration_id %}"
+                        method="POST"
+                      >
+                        {% csrf_token %}
+                        <button
+                          type="submit"
+                          class="btn btn-outline-secondary btn-sm rounded-pill px-3 border-0"
+                        >
+                          Decline
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="2" class="text-center py-5 text-muted small">
+                    No pending registrations.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+          <h6 class="fw-bold mb-0 text-dark text-uppercase small ls-wide">
+            Volunteer Requests
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr class="text-muted small text-uppercase border-bottom">
+                  <th class="py-3">Applicant</th>
+                  <th class="py-3">Budget Share (BDT)</th>
+                  <th class="text-end py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for vol in pending_vols %}
+                <tr class="border-bottom-0">
+                  <td class="py-3">
+                    <div class="fw-bold text-dark-soft">
+                      {{ vol.student.name }}
+                    </div>
+                    <div class="small text-muted">{{ vol.student.email }}</div>
+                  </td>
+                  <td class="py-3">
+                    <div
+                      class="input-group input-group-sm"
+                      style="max-width: 130px"
+                    >
+                      <span class="input-group-text bg-light border-end-0"
+                        >৳</span
+                      >
+                      <input
+                        type="number"
+                        id="budget_input_{{ vol.volunteer_id }}"
+                        class="form-control border-start-0"
+                        placeholder="0"
+                      />
+                    </div>
+                  </td>
+                  <td class="text-end py-3">
+                    <div class="d-flex justify-content-end gap-2">
+                      <button
+                        onclick="approveWithBudget('{{ vol.volunteer_id }}')"
+                        class="btn btn-success btn-sm rounded-pill px-3"
+                      >
+                        Approve
+                      </button>
+                      <a
+                        href="{% url 'reject_volunteer' vol.volunteer_id %}"
+                        class="btn btn-outline-danger btn-sm rounded-pill px-3"
+                      >
+                        Reject
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+          <h6 class="fw-bold mb-0 text-dark text-uppercase small ls-wide">
+            Confirmed Attendees
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="list-group list-group-flush">
+            {% for attendee in confirmed_attendees %}
+            <div
+              class="list-group-item px-0 border-0 d-flex align-items-center mb-2"
+            >
+              <div
+                class="bg-light text-dark rounded-circle d-flex align-items-center justify-content-center me-3 border"
+                style="width: 36px; height: 36px"
+              >
+                <i class="bi bi-person small"></i>
+              </div>
+              <div>
+                <h6 class="mb-0 fw-bold small text-dark-soft">
+                  {{ attendee.student.name }}
+                </h6>
+                <small class="text-muted" style="font-size: 0.75rem"
+                  >{{ attendee.student.email }}</small
+                >
+              </div>
+            </div>
+            {% empty %}
+            <p class="text-center text-muted py-4 small">
+              List is currently empty.
+            </p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+          <h6 class="fw-bold mb-0 text-dark text-uppercase small ls-wide">
+            Active Volunteers
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="list-group list-group-flush">
+            {% for vol in approved_vols %}
+            <div
+              class="list-group-item px-0 border-0 d-flex justify-content-between align-items-center mb-2"
+            >
+              <div class="d-flex align-items-center">
+                <div
+                  class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style="width: 36px; height: 36px"
+                >
+                  <i class="bi bi-check2 small"></i>
+                </div>
+                <div>
+                  <h6 class="mb-0 fw-bold small text-dark-soft">
+                    {{ vol.student.name }}
+                  </h6>
+                  <small class="text-muted" style="font-size: 0.75rem"
+                    >৳{{ vol.budget_allocated|default:"0" }} Budget</small
+                  >
+                </div>
+              </div>
+              <small
+                class="text-muted border-start ps-2"
+                style="font-size: 0.7rem"
+                >{{ vol.volunteer_date|date:"M d" }}</small
+              >
+            </div>
+            {% empty %}
+            <p class="text-center text-muted py-4 small">
+              No active volunteers.
+            </p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function approveWithBudget(volId) {
+    const budgetValue =
+      document.getElementById("budget_input_" + volId).value || 0;
+    window.location.href = `/approve-volunteer/${volId}/?budget=${budgetValue}`;
+  }
+</script>
+{% endblock %}

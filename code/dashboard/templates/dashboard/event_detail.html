@@ -1,38 +1,53 @@
-{% extends "dashboard/base.html" %} 
-{% load static %}
+{% extends "dashboard/base.html" %} {% load static %} {% block content %}
+<style>
+  /* Consistency with the Management page */
+  .card { border: 1px solid #f0f0f0 !important; }
+  .badge-outline { background: transparent; border: 1px solid #e0e0e0; color: #666; font-weight: 500; }
+  .badge-host { background: #000; color: #fff; }
+  .badge-partner { background: #f8f9fa; color: #333; border: 1px solid #eee; }
+  .text-dark-soft { color: #222; }
+  .bg-subtle-light { background-color: #fafafa; }
+</style>
 
-{% block content %}
 <div class="container py-4">
   <div class="card p-5 rounded-4 border-0 shadow-sm mb-4">
     <div class="row align-items-center">
       <div class="col-md-8">
-        <span class="badge bg-primary-subtle text-primary mb-2 px-3 rounded-pill">Event Detail</span>
-        <h1 class="fw-bold display-5">{{ event.event_name }}</h1>
-<p class="text-muted fs-5">
-    <i class="bi bi-geo-alt me-2"></i>
-    {{ event.venue|default:"Venue TBA" }}
-</p>
+        <span class="badge badge-outline mb-3 px-3 rounded-pill text-uppercase small" style="letter-spacing: 1px;">
+          Event Detail
+        </span>
+        <h1 class="fw-bold display-5 text-dark">{{ event.event_name }}</h1>
+        <p class="text-muted fs-5 mb-0">
+          <i class="bi bi-geo-alt me-2"></i>
+          {{ event.venue|default:"Venue TBA" }}
+        </p>
       </div>
-      <div class="col-md-4 text-end">
-        <div class="p-3 bg-light rounded-4">
-          <h4 class="fw-bold mb-0">Fee: {{ event.event_fee|default:"0" }} BDT</h4>
+      <div class="col-md-4 text-md-end mt-4 mt-md-0">
+        <div class="p-3 bg-subtle-light rounded-4 border">
+          <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Entry Fee</small>
+          <h4 class="fw-bold mb-0 text-dark">
+            {{ event.event_fee|default:"0" }} <span class="small fw-normal">BDT</span>
+          </h4>
         </div>
       </div>
     </div>
   </div>
 
   <div class="card p-4 rounded-4 border-0 shadow-sm mb-4">
-    <h5 class="fw-bold mb-3 text-uppercase small text-muted" style="letter-spacing: 1px">Organizing Clubs</h5>
+    <h6 class="fw-bold mb-3 text-uppercase small text-muted" style="letter-spacing: 1.5px">
+      Organizing Entities
+    </h6>
     <div class="d-flex flex-wrap gap-2">
       {% for club in hosting_clubs %}
-        <div class="badge bg-primary px-3 py-2 rounded-pill">
-          <i class="bi bi-shield-check me-1"></i> {{ club.club_name }} (Host)
-        </div>
+      <div class="badge badge-host px-3 py-2 rounded-pill fw-medium">
+        <i class="bi bi-shield-check me-1"></i> {{ club.club_name }} <small class="opacity-75 ps-1">(Host)</small>
+      </div>
       {% endfor %} 
+      
       {% for club in partnered_clubs %}
-        <div class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill border">
-          <i class="bi bi-people me-1"></i> {{ club.club_name }} (Partner)
-        </div>
+      <div class="badge badge-partner px-3 py-2 rounded-pill fw-medium">
+        <i class="bi bi-people me-1"></i> {{ club.club_name }} <small class="text-muted ps-1">(Partner)</small>
+      </div>
       {% endfor %}
     </div>
   </div>
@@ -40,17 +55,21 @@
   <div class="row">
     <div class="col-lg-8">
       <div class="card p-4 rounded-4 border-0 shadow-sm mb-4">
-        <h5 class="fw-bold mb-3">About the Event</h5>
-        <p>{{ event.event_details|default:"No description provided." }}</p>
-        <hr />
-        <div class="row text-center mt-4">
-          <div class="col-6">
-            <small class="text-muted d-block">DATE</small>
-            <span class="fw-bold">{{ event.event_date|date:"M d, Y" }}</span>
+        <h5 class="fw-bold mb-4 text-dark-soft">About the Event</h5>
+        <div class="text-secondary lh-lg">
+          {{ event.event_details|default:"No description provided." }}
+        </div>
+        
+        <hr class="my-4 opacity-25" />
+        
+        <div class="row text-center">
+          <div class="col-6 border-end">
+            <small class="text-muted d-block text-uppercase mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Date</small>
+            <span class="fw-bold text-dark">{{ event.event_date|date:"M d, Y" }}</span>
           </div>
           <div class="col-6">
-            <small class="text-muted d-block">TIME</small>
-            <span class="fw-bold">{{ event.event_date|date:"h:i A" }}</span>
+            <small class="text-muted d-block text-uppercase mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Time</small>
+            <span class="fw-bold text-dark">{{ event.event_date|date:"h:i A" }}</span>
           </div>
         </div>
       </div>
@@ -58,37 +77,53 @@
 
     <div class="col-lg-4">
       <div class="card p-4 rounded-4 border-0 shadow-sm sticky-top" style="top: 100px">
-        <h5 class="fw-bold mb-4">Registration</h5>
-        <form method="POST">
-          {% csrf_token %} 
-          {% if is_registered %} 
-            {% if reg_object.payment_status == 'Unpaid' %}
-              <div class="alert alert-warning border-0 rounded-4 mb-3">
-                <i class="bi bi-clock-history me-2"></i> Request pending approval.
-              </div>
-            {% else %}
-              <div class="alert alert-success border-0 rounded-4 mb-3">
-                <i class="bi bi-check-circle-fill me-2"></i> Registration Approved!
-              </div>
-            {% endif %} 
+        <h5 class="fw-bold mb-4 text-dark-soft">Registration</h5>
+        
+        {% if is_registered %} 
+          {% if reg_object.payment_status == 'Unpaid' %}
+          <div class="alert bg-subtle-light border text-center rounded-4 mb-3">
+            <i class="bi bi-clock-history me-2"></i> <small class="fw-bold">REQUEST PENDING</small>
+          </div>
           {% else %}
-            <button type="submit" name="action" value="attend" class="btn btn-dark w-100 rounded-pill py-3 fw-bold mb-3 shadow-sm">
-              Register to Attend
-            </button>
-          {% endif %}
-
-          <hr />
-
-          {% if is_volunteer %}
-            <div class="alert alert-info rounded-4 border-0 mb-0">
-              <i class="bi bi-star-fill me-2"></i>You are a volunteer!
-            </div>
-          {% else %}
-            <button type="submit" name="action" value="volunteer" class="btn btn-outline-dark w-100 rounded-pill py-3 fw-bold" style="border-width: 2px">
-              Apply to Volunteer
-            </button>
-          {% endif %}
+          <div class="alert bg-dark text-white text-center border-0 rounded-4 mb-3">
+            <i class="bi bi-check-circle-fill me-2"></i> <small class="fw-bold">CONFIRMED</small>
+          </div>
+          {% endif %} 
+        {% else %}
+        <form method="POST" class="mb-3">
+          {% csrf_token %}
+          <button type="submit" name="action" value="attend" class="btn btn-dark w-100 rounded-pill py-3 fw-bold shadow-sm">
+            Register to Attend
+          </button>
         </form>
+        {% endif %}
+
+        <div class="position-relative my-4">
+            <hr class="opacity-25">
+            <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small text-uppercase">or</span>
+        </div>
+
+        {% if is_volunteer %} 
+          <button class="btn btn-outline-dark w-100 rounded-pill py-3 fw-bold mb-3" disabled>
+            {% if vol_object.role == 'Pending' %}
+              <i class="bi bi-hourglass-split me-2"></i>Volunteer Pending
+            {% else %}
+              <i class="bi bi-patch-check me-2"></i>Active Volunteer
+            {% endif %}
+          </button>
+        {% else %}
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="volunteer" />
+          <button type="submit" class="btn btn-outline-dark w-100 rounded-pill py-3 fw-bold mb-3">
+            <i class="bi bi-person-plus me-2"></i>Volunteer for Event
+          </button>
+        </form>
+        {% endif %}
+        
+        <p class="text-center text-muted small mt-2 mb-0" style="font-size: 0.75rem;">
+            Questions? Contact the club host.
+        </p>
       </div>
     </div>
   </div>

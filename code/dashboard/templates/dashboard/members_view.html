@@ -1,4 +1,12 @@
 {% extends 'dashboard/base.html' %} {% block content %}
+<style>
+    .hover-lift { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        border: 1px solid #000 !important;
+    }
+</style>
 <div class="container-fluid py-4">
   <div
     class="card border-0 shadow-sm p-4 mb-4"
@@ -20,7 +28,7 @@
       </div>
       <div class="text-end">
         <p class="small text-muted mb-0">Club Advisor</p>
-        <p class="fw-bold mb-0">{{ club.contact_advisor }}</p>
+        <p class="fw-bold mb-0">{{ club.advisor_name }}</p>
       </div>
     </div>
   </div>
@@ -67,43 +75,48 @@
           <i class="bi bi-calendar-event me-2 text-primary"></i>Upcoming Events
         </h5>
 
-        <div class="row">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
           {% for event in club_events %}
-          <div class="col-md-6 col-lg-4 mb-3">
-            <div class="p-3 border rounded-4 bg-light position-relative h-100">
-              <div class="d-flex align-items-center mb-2">
-                <div
-                  class="bg-white rounded-3 p-2 text-center shadow-sm me-3"
-                  style="min-width: 60px"
-                >
-                  <span class="d-block small text-uppercase text-muted fw-bold"
-                    >{{ event.event_date|date:"M" }}</span
-                  >
-                  <span class="d-block h4 mb-0 fw-bold"
-                    >{{ event.event_date|date:"d" }}</span
-                  >
-                </div>
-                <div>
-                  <h6 class="fw-bold mb-0">{{ event.event_name }}</h6>
-                  <span class="small text-muted"
-                    ><i class="bi bi-clock me-1"></i>{{ event.event_time
-                    }}</span
-                  >
+          <div class="col">
+            <a
+              href="{% url 'event_detail' event.event_id %}"
+              class="text-decoration-none text-dark"
+            >
+              <div
+                class="card h-100 border-0 shadow-sm rounded-4 hover-lift transition-all"
+              >
+                <div class="card-body p-4">
+                  <div class="d-flex align-items-center gap-3">
+                    <div
+                      class="bg-light rounded-4 p-3 text-center"
+                      style="min-width: 80px"
+                    >
+                      <small class="text-uppercase text-muted fw-bold d-block"
+                        >{{ event.event_date|date:"M" }}</small
+                      >
+                      <h3 class="fw-bold mb-0">
+                        {{ event.event_date|date:"d" }}
+                      </h3>
+                    </div>
+
+                    <div>
+                      <h5 class="fw-bold mb-1">{{ event.event_name }}</h5>
+                      <div class="text-muted small">
+                        <i class="bi bi-clock me-1"></i> {{event.event_date|date:"h:i A" }}
+                      </div>
+                      <div class="text-muted small mt-1">
+                        <i class="bi bi-geo-alt me-1"></i> {{event.venue|default:"Venue TBA" }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <p class="small text-muted mb-0 mt-2 text-truncate-2">
-                {{ event.description }}
-              </p>
-              <hr class="my-2 opacity-25" />
-              <div class="small fw-bold text-primary">
-                <i class="bi bi-geo-alt me-1"></i>{{ event.location }}
-              </div>
-            </div>
+            </a>
           </div>
           {% empty %}
-          <div class="col-12 text-center py-4">
-            <p class="text-muted italic">
-              No upcoming events scheduled for this club yet.
+          <div class="col-12">
+            <p class="text-muted text-center py-4">
+              No upcoming events for this club.
             </p>
           </div>
           {% endfor %}

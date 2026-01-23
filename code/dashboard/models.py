@@ -204,11 +204,14 @@ class Users(AbstractBaseUser):
 
 
 class Volunteers(models.Model):
-    volunteer_id = models.AutoField(db_column='Volunteer_ID', primary_key=True)  # Field name made lowercase.
-    event = models.ForeignKey(Events, models.CASCADE, db_column='Event_ID', blank=True, null=True)  # Field name made lowercase.
-    student = models.ForeignKey(Students, models.CASCADE, db_column='Student_ID', blank=True, null=True)  # Field name made lowercase.
-    role = models.CharField(db_column='Role', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    budget_allocated = models.IntegerField(db_column='Budget_allocated', blank=True, null=True)  # Field name made lowercase.
+    volunteer_id = models.AutoField(db_column='Volunteer_ID', primary_key=True)
+    event = models.ForeignKey(Events, models.CASCADE, db_column='Event_ID', blank=True, null=True)
+    student = models.ForeignKey(Students, models.CASCADE, db_column='Student_ID', blank=True, null=True)
+    # We will use 'role' to store status (e.g., 'Pending', 'Approved')
+    role = models.CharField(db_column='Role', max_length=255, blank=True, null=True) 
+    budget_allocated = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=0)
+    # Add this field to your database table first!
+    volunteer_date = models.DateField(db_column='Volunteer_Date', blank=True, null=True)
 
     class Meta:
         managed = False

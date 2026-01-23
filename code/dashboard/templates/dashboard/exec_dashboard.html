@@ -1,11 +1,19 @@
 {% extends "dashboard/base.html" %} {% load static %} {% block content %}
 <div class="container-fluid py-4">
-  <div class="mb-5">
-    <h2 class="fw-bold fs-1">
-      {{ club.club_name }}
-      <span class="text-muted fs-4">| Executive Portal</span>
-    </h2>
-    <p class="badge bg-primary rounded-pill">Role: {{ role }}</p>
+  <div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+      <h2 class="fw-bold fs-1">
+        {{ club.club_name }}
+        <span class="text-muted fs-4">| Executive Portal</span>
+      </h2>
+      <p class="badge bg-primary rounded-pill">Role: {{ role }}</p>
+    </div>
+    <a
+      href="{% url 'create_event_page' club.club_id %}"
+      class="btn btn-dark rounded-pill px-4 shadow-sm"
+    >
+      <i class="bi bi-plus-lg me-2"></i>Create New Event
+    </a>
   </div>
 
   <div
@@ -38,58 +46,61 @@
   </div>
 
   <div class="card p-4 rounded-4 border-0 shadow-sm mt-4">
-    <h5 class="fw-bold mb-4">Event Registration Requests</h5>
+    <h5 class="fw-bold mb-4">Member Registration Requests</h5>
     <div class="table-responsive">
-        <table class="table align-middle">
-            <thead>
-                <tr class="text-muted small">
-                    <th>Student</th>
-                    <th>Event</th>
-                    <th class="text-end">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for req in event_reg_requests %}
-                <tr>
-                    <td>{{ req.student.name }}</td>
-                    <td>{{ req.event.event_name }}</td>
-                    <td class="text-end">
-                        <form action="{% url 'approve_event_reg' req.registration_id %}" method="POST">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-success btn-sm rounded-pill px-3">Accept</button>
-                        </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3" class="text-center py-4 text-muted">No pending event requests.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+      <table class="table align-middle">
+        <thead>
+          <tr class="text-muted small">
+            <th>Student Name</th>
+            <th>Email</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in pending_requests %}
+          <tr>
+            <td>{{ req.student.name }}</td>
+            <td>{{ req.student.email }}</td>
+            <td class="text-end">
+              <form
+                action="{% url 'approve_registration' req.registration_id %}"
+                method="POST"
+              >
+                {% csrf_token %}
+                <button
+                  type="submit"
+                  class="btn btn-primary btn-sm rounded-pill px-3"
+                >
+                  Approve Member
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-center py-4 text-muted">
+              No pending member requests.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px;">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="fw-bold mb-1">Manage Club Events</h5>
+            <p class="text-muted small mb-0">View event details, manage attendees, and process registrations.</p>
+        </div>
+        <a href="{% url 'club_events_list' club.club_id %}" class="btn btn-dark rounded-pill px-4 shadow-sm">
+            View All Events
+        </a>
     </div>
 </div>
-<div class="card p-4 rounded-4 border-0 shadow-sm mt-4">
-    <h5 class="fw-bold mb-4">Event Registration Requests</h5>
-    <table class="table align-middle">
-        {% for req in event_reg_requests %}
-        <tr>
-            <td>{{ req.student.name }}</td>
-            <td>{{ req.event.event_name }}</td>
-            <td class="text-end">
-                <form action="{% url 'approve_event_reg' req.registration_id %}" method="POST">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success btn-sm rounded-pill px-3">Accept</button>
-                </form>
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3" class="text-center text-muted py-3">No pending event requests.</td></tr>
-        {% endfor %}
-    </table>
-</div>
 
-  <div class="card border-0 shadow-sm p-4" style="border-radius: 20px">
+  <div class="card border-0 shadow-sm p-4 mt-4" style="border-radius: 20px">
     <h5 class="fw-bold mb-4">Current Members</h5>
     <div class="table-responsive">
       <table class="table align-middle">
