@@ -1,4 +1,5 @@
 from urllib import request
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.db import transaction
@@ -7,6 +8,9 @@ from .models import Alert, Clubs, ClubsEvents, Loans, Users, Students,Clubs, Clu
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+import qrcode
+from io import BytesIO
+from django.core.mail import EmailMessage
 from datetime import datetime
 
 from dashboard import models
@@ -21,11 +25,9 @@ def login_view(request):
             login(request, user)
             return redirect('home')
         else:
-            # Login error
             messages.error(request, "Invalid email or password.")
             return render(request, 'dashboard/login.html')
             
-    # Regular GET request (initial page load)
     return render(request, 'dashboard/login.html')
 
 def register_view(request):
@@ -33,15 +35,13 @@ def register_view(request):
         student_id = request.POST.get('student_id')
         email = request.POST.get('email')
         
-        # 1. Check if the Student_ID already exists
         if Students.objects.filter(student_id=student_id).exists():
             messages.error(request, f"Student ID {student_id} is already registered.")
-            return render(request, 'dashboard/login.html', {'show_register_modal': True}) # Stay on page
+            return render(request, 'dashboard/login.html', {'show_register_modal': True})
 
-        # 2. Check if the Email already exists (Optional but recommended)
         if Students.objects.filter(email=email).exists():
             messages.error(request, "This email is already associated with an account.")
-            return render(request, 'dashboard/login.html', {'show_register_modal': True}) # Stay on page
+            return render(request, 'dashboard/login.html', {'show_register_modal': True})
         
     if request.method == "POST":
         # Get data from form
@@ -53,39 +53,32 @@ def register_view(request):
         ptype = request.POST.get('personality')
 
         try:
-            with transaction.atomic(): # Ensures both save or none save
-                # 1. Create User (Hashed)
+            with transaction.atomic():
                 new_user = Users(user_email=email)
                 new_user.set_password(pw)
                 new_user.save()
 
-                # 2. Create Student profile linked to User
                 new_student = Students(
                     student_id=sid,
                     name=name,
-                    email=new_user, # Foreign Key link
+                    email=new_user,
                     department=dept,
                     personality_type=ptype
                 )
                 new_student.save()
 
-            return redirect('login') # Success!
+            return redirect('login')
         except Exception as e:
             return render(request, 'dashboard/login.html', {'error': f'Registration failed: {e}'})
         
 @login_required
 def home_view(request):
-    # Fetch top 3 events for the cards
+
     upcoming_focus_events = Events.objects.all().order_by('event_date')[:3]
     
     try:
         current_student = Students.objects.get(email=request.user.user_email)
-        
-        # Sidebar data
         my_clubs = ClubsMembers.objects.filter(student=current_student).select_related('club')
-        
-        # Optimized registration logic for the "My Registered Events" table
-        # We fetch the registrations and the linked event data in one go
         registrations = EventRegistration.objects.filter(student=current_student).select_related('event')
         
     except Students.DoesNotExist:
@@ -94,38 +87,30 @@ def home_view(request):
 
     context = {
         'events': upcoming_focus_events,
-        'my_registrations': registrations, # Use registrations to access both Event and Reg data
+        'my_registrations': registrations,
         'my_clubs': my_clubs,
     }
     return render(request, 'dashboard/home.html', context)
 
 @login_required
 def all_clubs_view(request):
-    # 1. Get all clubs for the main browse table
     clubs = Clubs.objects.all()
     
     try:
-        # 2. Identify the SPECIFIC student logged in
-        # We use request.user.user_email to match your custom User model
         student = Students.objects.get(email=request.user.user_email)
-        
-        # 3. CRITICAL: Filter memberships ONLY for this student
-        # If you use .all() here, EVERYONE sees EVERYONE'S clubs in the sidebar!
         my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
         
-        # 4. Get lists for the badges on the main table
         joined_club_ids = list(my_clubs.values_list('club_id', flat=True))
         pending_club_ids = list(ClubsRegistration.objects.filter(student=student).values_list('club_id', flat=True))
         
     except Students.DoesNotExist:
-        # If the student record isn't found, the sidebar should be empty
         my_clubs = []
         joined_club_ids = []
         pending_club_ids = []
 
     return render(request, 'dashboard/all_clubs.html', {
         'clubs': clubs,
-        'my_clubs': my_clubs, # This now only contains Labib's data
+        'my_clubs': my_clubs,
         'joined_club_ids': joined_club_ids,
         'pending_club_ids': pending_club_ids,
     })
@@ -133,23 +118,18 @@ def all_clubs_view(request):
 @login_required
 def join_club_request(request, club_id):
     try:
-        # 1. Get student and club using the new ID names
         student = Students.objects.get(email=request.user.user_email)
         club = Clubs.objects.get(club_id=club_id)
         
 
-        # 2. Check if already a member
         if ClubsMembers.objects.filter(student=student, club=club).exists():
             messages.info(request, "You are already a member of this club.")
             return redirect('all_clubs')
 
-        # 3. Check if a request is already pending (using reg_id logic)
         if ClubsRegistration.objects.filter(student=student, club=club).exists():
             messages.warning(request, "Your membership request is already pending.")
             return redirect('all_clubs')
 
-        # 4. Create the Request using your SQL field: 'payment_status'
-        # Since your SQL doesn't have a 'status' column, we use 'Unpaid' as the pending state
         ClubsRegistration.objects.create(
             student=student,
             club=club,
@@ -168,18 +148,14 @@ def club_dashboard_view(request, club_id):
     student = Students.objects.get(email=request.user.user_email)
     club = get_object_or_404(Clubs, club_id=club_id)
     membership = get_object_or_404(ClubsMembers, student=student, club=club)
-    
-    # Existing logic for events and members...
     event_links = ClubsEvents.objects.filter(club_id=club.club_id).select_related('event')
     club_events = [link.event for link in event_links]
     club_event_ids = [link.event.event_id for link in event_links]
     all_members = ClubsMembers.objects.filter(club=club).select_related('student')
     my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
 
-    # NEW: Handle Alert Creation POST
     if request.method == "POST" and request.POST.get('action') == 'create_alert':
         message = request.POST.get('message')
-        # Only allow Executives to post
         if membership.role in ['President', 'Vice President', 'Executive'] and message:
             Alert.objects.create(
                 club=club,
@@ -189,7 +165,6 @@ def club_dashboard_view(request, club_id):
             messages.success(request, "Alert broadcasted successfully!")
             return redirect('club_dashboard', club_id=club_id)
 
-    # NEW: Fetch Alerts for the accordion (General and Exec view)
     alerts = Alert.objects.filter(club=club).order_by('-created_at')
 
     context = {
@@ -198,7 +173,7 @@ def club_dashboard_view(request, club_id):
         'all_members': all_members,
         'club_events': club_events, 
         'role': membership.role,
-        'alerts': alerts, # Pass alerts to both views
+        'alerts': alerts, 
     }
 
     if membership.role in ['President', 'Vice President', 'Executive']:
@@ -212,16 +187,62 @@ def club_dashboard_view(request, club_id):
         return render(request, 'dashboard/members_view.html', context)
     
 @login_required
-def approve_event_registration(request, registration_id):
-    registration = get_object_or_404(EventRegistration, registration_id=registration_id)
+def approve_event_registration(request, reg_id):
+    registration = get_object_or_404(EventRegistration, registration_id=reg_id)
     
     if request.method == "POST":
-        # Use 'Success' to match your MySQL ENUM exactly
-        registration.payment_status = 'Success'
-        registration.save()
+        registration.payment_status = "Success"
+        registration.attendance = "Absent"
+
+        scan_url = request.build_absolute_uri(f"/events/scan/{registration.registration_id}/")
         
-    # FIX: Redirect to 'club_dashboard', not 'club_event_manager'
-    return redirect('club_dashboard', club_id=registration.event.club_id)
+
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(scan_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        qr_image_data = buffer.getvalue()
+        
+        registration.save()
+
+        subject = f"Registration Confirmed: {registration.event.event_name}"
+        message = (
+            f"Hi {registration.student.name},\n\n"
+            f"Your registration for {registration.event.event_name} is confirmed!\n"
+            f"Time: {registration.event.start_time}\n\n"
+            "Please present the attached QR code at the entrance for attendance."
+        )
+        
+        email = EmailMessage(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [registration.student.email.user_email]
+        )
+        email.attach(f'attendance_qr_{reg_id}.png', qr_image_data, 'image/png')
+        email.send()
+
+        messages.success(request, "Registration approved and QR code sent.")
+        
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required
+def scan_attendance(request, reg_id):  
+    registration = get_object_or_404(EventRegistration, registration_id=reg_id)
+    
+    if registration.attendance == "Present":
+        messages.info(request, f"{registration.student.name} is already marked present.")
+    else:
+        registration.attendance = "Present"
+        registration.attendance_time = timezone.now()
+        registration.save()
+        messages.success(request, f"Attendance recorded for {registration.student.name} at {registration.attendance_time}")
+    
+    return render(request, 'dashboard/scan_result.html', {'registration': registration})
     
 @login_required
 def approve_member(request, reg_id):
@@ -230,13 +251,11 @@ def approve_member(request, reg_id):
         club_id = pending.club.club_id
         
         with transaction.atomic():
-            # Create the membership record
             ClubsMembers.objects.create(
                 student=pending.student,
                 club=pending.club,
                 role='General Member'
             )
-            # Remove from pending list
             pending.delete()
             
         messages.success(request, f"Approved {pending.student.email} successfully!")
@@ -247,8 +266,6 @@ def reject_member(request, reg_id):
     if request.method == 'POST':
         pending = get_object_or_404(ClubsRegistration, reg_id=reg_id)
         club_id = pending.club.club_id
-        
-        # Simply delete the registration request
         pending.delete()
         
         messages.warning(request, "Membership request rejected.")
@@ -257,10 +274,8 @@ def reject_member(request, reg_id):
 @login_required
 def toggle_registration(request, club_id):
     if request.method == "POST":
-        # 1. Get the club
         club = get_object_or_404(Clubs, club_id=club_id)
         
-        # 2. Security Check: Ensure the user is an executive of THIS club
         is_exec = ClubsMembers.objects.filter(
             student__email=request.user.user_email, 
             club=club, 
@@ -268,7 +283,7 @@ def toggle_registration(request, club_id):
         ).exists()
 
         if is_exec:
-            club.reg_open = not club.reg_open  # Flip the 1 to 0 or 0 to 1
+            club.reg_open = not club.reg_open 
             club.save()
             status = "Open" if club.reg_open else "Closed"
             messages.success(request, f"Registration is now {status} for {club.club_name}.")
@@ -281,7 +296,6 @@ def create_event_page(request, club_id):
     hosting_club = get_object_or_404(Clubs, club_id=club_id)
     
     if request.method == "POST":
-        # 1. Capture Form Data
         name = request.POST.get('event_name')
         date_str = request.POST.get('event_date')
         time_str = request.POST.get('event_time')
@@ -290,17 +304,13 @@ def create_event_page(request, club_id):
         event_type = request.POST.get('event_type')
         fee = request.POST.get('event_fee') or 0
         
-        # Combine Date and Time for DateTimeField
         full_datetime = None
         if date_str and time_str:
             full_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
 
-        # 2. Handle Budgets and Partners
-        # Get all budget shares (host is usually the first one)
         shares = request.POST.getlist('budget_share')
         total_budget = sum(int(s) for s in shares if s)
 
-        # 3. Create the Main Event record
         new_event = Events.objects.create(
             event_name=name,
             event_date=full_datetime,
@@ -311,17 +321,14 @@ def create_event_page(request, club_id):
             budget=total_budget
         )
 
-        # 4. Create ClubsEvents record for the Host
         ClubsEvents.objects.create(
-            club_id=hosting_club.club_id, # Storing the ID string
+            club_id=hosting_club.club_id,
             event=new_event,
             role='Host',
             budget_share=int(shares[0]) if shares[0] else 0
         )
 
-        # 5. Create ClubsEvents records for Partners
         partner_ids = request.POST.getlist('partner_club_ids')
-        # Partners start from the second index in the 'shares' list
         for i, p_id in enumerate(partner_ids):
             ClubsEvents.objects.create(
                 club_id=p_id,
@@ -340,11 +347,8 @@ def create_event_page(request, club_id):
 
 @login_required
 def event_detail_view(request, event_id):
-    # Fetch the event and student
     event = get_object_or_404(Events, event_id=event_id)
     student = Students.objects.get(email=request.user.user_email)
-
-    # 1. Fetch involvements, hosting/partnered clubs
     club_involvements = ClubsEvents.objects.filter(event=event)
     hosting_clubs = []
     partnered_clubs = []
@@ -357,34 +361,27 @@ def event_detail_view(request, event_id):
             else:
                 partnered_clubs.append(club_obj)
 
-    # 2. Fetch registration and volunteer objects
     reg_object = EventRegistration.objects.filter(student=student, event=event).first()
     is_registered = reg_object is not None
     
     vol_object = Volunteers.objects.filter(student=student, event=event).first()
     is_volunteer = vol_object is not None
 
-    # 3. Logic for Permissions
     can_review = reg_object and reg_object.payment_status == 'Success'
     is_approved_volunteer = vol_object and vol_object.role == 'Approved'
     
-    # 4. Expense Logic (Fetch existing expenses and total)
     volunteer_expenses = []
     total_spent = 0
     remaining_budget = 0
     if is_approved_volunteer:
         volunteer_expenses = Expenses.objects.filter(volunteer=vol_object)
         total_spent = sum(exp.amount for exp in volunteer_expenses if exp.amount)
-        
-        # Calculate the actual remaining balance here
         budget_allocated = vol_object.budget_allocated or 0
         remaining_budget = budget_allocated - total_spent
 
-    # 5. Handle POST actions
     if request.method == "POST":
         action = request.POST.get('action')
-        
-        # Action: Registration (Blocked if Volunteer)
+
         if action == 'attend':
             if is_volunteer:
                 messages.error(request, "You are already a volunteer and cannot register as an attendee.")
@@ -394,8 +391,7 @@ def event_detail_view(request, event_id):
                     payment_status='Unpaid', attendance='Absent'
                 )
                 return redirect('event_detail', event_id=event_id)
-            
-        # Action: Volunteering (Blocked if Attendee)
+
         elif action == 'volunteer':
             if is_registered:
                 messages.error(request, "You are already an attendee and cannot apply to volunteer.")
@@ -405,19 +401,16 @@ def event_detail_view(request, event_id):
                 )
                 return redirect('event_detail', event_id=event_id)
 
-        # Action: Feedback
         elif action == 'submit_feedback' and can_review:
             reg_object.rating = request.POST.get('rating')
             reg_object.comment = request.POST.get('comment')
             reg_object.save()
             return redirect('event_detail', event_id=event_id)
 
-        # Action: Expense Submission (NEW)
         elif action == 'submit_expense' and is_approved_volunteer:
             description = request.POST.get('description', '').strip()
             amount_str = request.POST.get('amount', '').strip()
-            
-            # Strict validation: Check if fields are empty or amount is zero/negative
+
             if not description or not amount_str:
                 messages.error(request, "Both description and amount are required.")
             else:
@@ -456,11 +449,8 @@ def event_detail_view(request, event_id):
 @login_required
 def all_events_view(request):
     search_query = request.GET.get('search', '')
-    
-    # Base Queryset
     events = Events.objects.all().order_by('event_date')
     
-    # Apply Search Filter
     if search_query:
         events = events.filter(
             Q(event_name__icontains=search_query) |
@@ -468,7 +458,6 @@ def all_events_view(request):
             Q(venue__icontains=search_query)
         )
     
-    # Keep sidebar clubs populated
     student = Students.objects.get(email=request.user.user_email)
     my_clubs = ClubsMembers.objects.filter(student=student).select_related('club')
 
@@ -485,7 +474,6 @@ def approve_event_registration(request, registration_id):
         reg.save()
         messages.success(request, f"Approved {reg.student.name}")
 
-    # Redirect back to the specific event management page
     return redirect('manage_specific_event', event_id=reg.event.event_id)
 
 @login_required
@@ -496,16 +484,13 @@ def reject_event_reg(request, registration_id):
         reg.delete()
         messages.warning(request, "Registration rejected.")
 
-    # Redirect back to the specific event management page
     return redirect('manage_specific_event', event_id=event_id)
 
-# views.py
 @login_required
 def club_events_list(request, club_id):
     club = get_object_or_404(Clubs, club_id=club_id)
     event_links = ClubsEvents.objects.filter(club_id=club_id).select_related('event')
     
-    # Use timezone.now() for accurate DateTime comparison
     return render(request, 'dashboard/club_events_list.html', {
         'club': club,
         'event_links': event_links,
@@ -524,13 +509,10 @@ def manage_specific_event(request, event_id):
     pending_requests = EventRegistration.objects.filter(event=event, payment_status='Unpaid')
     confirmed_attendees = EventRegistration.objects.filter(event=event, payment_status='Success')
     
-    # 1. Get current month and year
     now = timezone.now()
     
-    # 2. Fetch pending volunteers
     pending_vols = Volunteers.objects.filter(event=event, role='Pending')
     
-    # 3. Calculate monthly activity for each volunteer
     now = timezone.now()
     for vol in pending_vols:
         vol.monthly_count = Volunteers.objects.filter(
@@ -547,42 +529,31 @@ def manage_specific_event(request, event_id):
         'club': club,
         'pending_requests': pending_requests,
         'confirmed_attendees': confirmed_attendees,
-        'pending_vols': pending_vols, # Now contains .monthly_count
+        'pending_vols': pending_vols,
         'approved_vols': approved_vols
     })
 
 @login_required
 def approve_volunteer(request, vol_id):
-    # Fetch the specific volunteer record
     volunteer = get_object_or_404(Volunteers, volunteer_id=vol_id)
     
-    # Get budget from GET parameters
     budget = request.GET.get('budget', 0)
     try:
         budget_value = float(budget)
     except (ValueError, TypeError):
         budget_value = 0
 
-    # Update the volunteer record
     volunteer.role = 'Approved'
     volunteer.budget_allocated = budget_value 
-    
-    # FIX: Set the date to the EVENT'S date, not the current timestamp
-    # This ensures the monthly activity count is based on when the work happens
     volunteer.volunteer_date = volunteer.event.event_date 
-    
     volunteer.save()
     
-    # Redirect back to the management page
     return redirect('manage_specific_event', event_id=volunteer.event.event_id)
 
 @login_required
 def reject_volunteer(request, vol_id):
-    # Fetch the record using volunteer_id to avoid FieldError
     vol = get_object_or_404(Volunteers, volunteer_id=vol_id)
     event_id = vol.event.event_id
-    
-    # This will now run for both GET and POST requests
     vol.delete()
         
     return redirect('manage_specific_event', event_id=event_id)
@@ -590,17 +561,15 @@ def reject_volunteer(request, vol_id):
 @login_required
 def create_alert(request):
     if request.method == "POST":
-        # Get data from the modal form
         subject = request.POST.get('subject')
         message = request.POST.get('message')
         club_id = request.POST.get('club_id')
         
         if subject and message and club_id:
             club = get_object_or_404(Clubs, club_id=club_id)
-            # Create the record with the new Subject field
             Alert.objects.create(
                 club=club,
-                subject=subject, # This was likely missing
+                subject=subject,
                 message=message,
                 created_at=timezone.now()
             )
@@ -608,15 +577,12 @@ def create_alert(request):
         else:
             messages.error(request, "Both Subject and Message are required.")
             
-    # Safely redirect back to the executive dashboard
     return redirect(request.META.get('HTTP_REFERER', 'club_dashboard'))
 
 @login_required
 def delete_alert(request, alert_id):
-    # Fetch the alert or return a 404 if not found
     alert = get_object_or_404(Alert, alert_id=alert_id)
     
-    # Check if the user is an executive of the club that owns this alert
     membership = ClubsMembers.objects.filter(
         student__email=request.user.user_email, 
         club=alert.club
@@ -635,10 +601,9 @@ def profile_view(request):
     student = get_object_or_404(Students, email=request.user.user_email)
     skills = Skills.objects.filter(student=student)
     
-    # Updated: Filter by Attendance status instead of just Payment
     participated_events = EventRegistration.objects.filter(
         student=student, 
-        attendance='Present'  # Adjust this string to match your DB value (e.g., 'Yes')
+        attendance='Present' 
     ).select_related('event')
     
     volunteered_events = Volunteers.objects.filter(
@@ -662,7 +627,6 @@ def add_skill(request):
         skill_name = request.POST.get('skill_name').strip()
         
         if skill_name:
-            # Create the skill record in the database
             Skills.objects.create(student=student, skill=skill_name)
             messages.success(request, f"Skill '{skill_name}' added!")
             
@@ -671,17 +635,13 @@ def add_skill(request):
 @login_required
 def delete_skill(request, skill_id):
     skill = get_object_or_404(Skills, skill_id=skill_id)
-    # Ensure the student only deletes their own skills
     if skill.student.email == request.user.user_email:
         skill.delete()
     return redirect('profile')
 
 @login_required
 def asset_management(request, club_id):
-    # The club context we are currently viewing
     current_view_club = get_object_or_404(Clubs, club_id=club_id)
-    
-    # 1. Global Pending List (IDs to disable buttons)
     user_member_ids = ClubsMembers.objects.filter(
         student__email__user_email=request.user.user_email
     ).values_list('member_id', flat=True)
@@ -695,23 +655,16 @@ def asset_management(request, club_id):
         status__in=['Approved']
     ).values_list('asset_id', flat=True)
 
-    # 2. Marketplace & Inventory
     my_assets = Assets.objects.filter(club=current_view_club)
     other_assets = Assets.objects.exclude(club=current_view_club).exclude(asset_id__in=unavailable_asset_ids)
-    
-    # 3. Lend Requests (Requests awaiting THIS club's approval)
-    lend_requests = Loans.objects.filter(asset__club=current_view_club, status='Pending')
 
-    # 4. Outgoing (Assets THIS club owns that are lent to OTHER clubs)
-    # Logic: Asset Owner = Current Club AND Borrower Club != Current Club
+    lend_requests = Loans.objects.filter(asset__club=current_view_club, status='Pending')
     currently_lended = Loans.objects.filter(
         asset__club=current_view_club, 
         status='Approved', 
         return_date__isnull=True
     ).exclude(borrower_member__club=current_view_club)
 
-    # 5. Incoming (Assets OTHER clubs own that THIS club has borrowed)
-    # Logic: Borrower Club = Current Club AND Asset Owner != Current Club
     currently_borrowed = Loans.objects.filter(
         borrower_member__club=current_view_club, 
         status='Approved', 
@@ -732,7 +685,6 @@ def asset_management(request, club_id):
 def request_borrow(request, asset_id, club_id):
     asset = get_object_or_404(Assets, asset_id=asset_id)
     
-    # FIX: Change asset=asset.asset to asset=asset
     is_already_lent = Loans.objects.filter(asset=asset, status='Approved').exists()
 
     if is_already_lent:
@@ -755,23 +707,19 @@ def request_borrow(request, asset_id, club_id):
 def approve_loan(request, loan_id):
     if request.method == "POST":
         loan = get_object_or_404(Loans, loan_id=loan_id)
-        
-        # Identify the executive member of the club that owns the asset
-        # Note: We use .user_email to match your custom user model
         approver = ClubsMembers.objects.filter(
             student__email__user_email=request.user.user_email, 
             club=loan.asset.club
         ).first()
         
         if approver:
-            # Check if someone else was approved while this request was pending
             already_lent = Loans.objects.filter(asset=loan.asset, status='Approved').exists()
             if already_lent:
                 messages.error(request, "This item is already lent to another club.")
                 return redirect(request.META.get('HTTP_REFERER'))
 
             loan.status = 'Approved'
-            loan.lender_member = approver  # Saves the lender_member_id
+            loan.lender_member = approver 
             loan.save()
             messages.success(request, f"Loan for {loan.asset.asset_name} approved.")
         else:
@@ -784,7 +732,6 @@ def reject_loan(request, loan_id):
     if request.method == "POST":
         loan = get_object_or_404(Loans, loan_id=loan_id)
         
-        # Identify the member performing the rejection
         rejector = ClubsMembers.objects.filter(
             student__email__user_email=request.user.user_email, 
             club=loan.asset.club
@@ -792,7 +739,7 @@ def reject_loan(request, loan_id):
         
         if rejector:
             loan.status = 'Rejected'
-            loan.lender_member = rejector  # Track who rejected it
+            loan.lender_member = rejector  
             loan.save()
             messages.info(request, "Loan request rejected.")
             

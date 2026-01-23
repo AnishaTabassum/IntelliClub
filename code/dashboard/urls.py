@@ -50,4 +50,5 @@ urlpatterns = [
     path('assets/reject/<int:loan_id>/', views.reject_loan, name='reject_loan'),
     path('assets/return/<int:loan_id>/', views.return_asset, name='return_asset'),
     path('club/<int:club_id>/assets/add/', views.add_asset, name='add_asset'),
+    path('events/scan/<int:reg_id>/', views.scan_attendance, name='scan_attendance'),
 ]

@@ -85,20 +85,30 @@
         <div class="table-responsive">
           <table class="table align-middle">
             <tbody class="small">
-              {% for req in pending_requests %}
-              <tr>
-                <td><strong>{{ req.student.name }}</strong><br><span class="text-muted">{{ req.student.email }}</span></td>
-                <td class="text-end">
+            {% for req in pending_requests %}
+            <tr>
+              <td>
+                <strong>{{ req.student.name }}</strong><br>
+                <span class="text-muted">{{ req.student.user_email }}</span>
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-2">
                   <form action="{% url 'approve_registration' req.reg_id %}" method="POST">
                     {% csrf_token %}
                     <button class="btn btn-primary btn-sm rounded-pill px-3">Approve</button>
-                </form>
-                </td>
-              </tr>
-              {% empty %}
-              <tr><td class="text-center py-4 text-muted">No pending member requests.</td></tr>
-              {% endfor %}
-            </tbody>
+                  </form>
+
+                  <form action="{% url 'reject_member' req.reg_id %}" method="POST">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-danger btn-sm rounded-pill px-3">Reject</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td class="text-center py-4 text-muted">No pending member requests.</td></tr>
+            {% endfor %}
+          </tbody>
           </table>
         </div>
       </div>
