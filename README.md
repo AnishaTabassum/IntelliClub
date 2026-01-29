@@ -469,7 +469,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🤝 Acknowledgments
 
 - United International University CSE Department
-- Course Instructor and TAs
+- Course Instructor
 - All team members who contributed to this project
 
 ---
