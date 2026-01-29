@@ -447,7 +447,7 @@ IntelliClub/
 *Club executive control panel*
 
 ### 9. Asset Management
-![Asset Management](screenshots/asset_management.png)
+![Asset Management](image_sources/asset.png)
 *Asset tracking and loan management system*
 
 ### 10. User Profile
