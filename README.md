@@ -418,40 +418,32 @@ IntelliClub/
 ![Login Page](screenshots/login.png)
 *User authentication page with email and password*
 
-### 2. Home Dashboard
-![Home Dashboard](screenshots/home.png)
-*Main dashboard showing overview of clubs and activities*
-
-### 3. All Clubs View
-![All Clubs](screenshots/all_clubs.png)
+### 2. All Clubs View
+![All Clubs](image_sources/club_view.png)
 *Complete listing of all university clubs*
 
-### 4. Club Events
-![Club Events](screenshots/club_events.png)
+### 3. Club Events
+![Club Events](image_sources/events.png)
 *Event management and listing for specific clubs*
 
-### 5. Event Details
-![Event Details](screenshots/event_detail.png)
+### 4. Event Details
+![Event Details](image_sources/events_detail.png)
 *Detailed view of event information and registration*
 
-### 6. Create Event
+### 5. Create Event
 ![Create Event](screenshots/create_event.png)
 *Event creation form for club executives*
 
-### 7. Members View
-![Members View](screenshots/members.png)
-*Club member listing with roles*
-
-### 8. Executive Dashboard
-![Executive Dashboard](screenshots/exec_dashboard.png)
+### 6. Executive Dashboard
+![Executive Dashboard](image_sources/executive_dashboard.png)
 *Club executive control panel*
 
-### 9. Asset Management
+### 7. Asset Management
 ![Asset Management](image_sources/asset.png)
 *Asset tracking and loan management system*
 
-### 10. User Profile
-![User Profile](screenshots/profile.png)
+### 8. User Profile
+![User Profile](image_sources/user_profile.png)
 *Student profile with personal information and skills*
 
 ---
