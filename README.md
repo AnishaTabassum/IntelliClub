@@ -415,7 +415,7 @@ IntelliClub/
 <!-- Add your screenshots here -->
 
 ### 1. Login Page
-![Login Page](screenshots/login.png)
+![Login Page](image_sources/login.png)
 *User authentication page with email and password*
 
 ### 2. All Clubs View
@@ -430,19 +430,15 @@ IntelliClub/
 ![Event Details](image_sources/events_detail.png)
 *Detailed view of event information and registration*
 
-### 5. Create Event
-![Create Event](screenshots/create_event.png)
-*Event creation form for club executives*
-
-### 6. Executive Dashboard
+### 5. Executive Dashboard
 ![Executive Dashboard](image_sources/executive_dashboard.png)
 *Club executive control panel*
 
-### 7. Asset Management
+### 6. Asset Management
 ![Asset Management](image_sources/asset.png)
 *Asset tracking and loan management system*
 
-### 8. User Profile
+### 7. User Profile
 ![User Profile](image_sources/user_profile.png)
 *Student profile with personal information and skills*
 
