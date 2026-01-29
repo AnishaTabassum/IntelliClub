@@ -410,49 +410,47 @@ IntelliClub/
 
 ---
 
-## 📸 Screenshots
-
-### Application Screenshots
+## Application
 
 <!-- Add your screenshots here -->
 
-#### 1. Login Page
+### 1. Login Page
 ![Login Page](screenshots/login.png)
 *User authentication page with email and password*
 
-#### 2. Home Dashboard
+### 2. Home Dashboard
 ![Home Dashboard](screenshots/home.png)
 *Main dashboard showing overview of clubs and activities*
 
-#### 3. All Clubs View
+### 3. All Clubs View
 ![All Clubs](screenshots/all_clubs.png)
 *Complete listing of all university clubs*
 
-#### 4. Club Events
+### 4. Club Events
 ![Club Events](screenshots/club_events.png)
 *Event management and listing for specific clubs*
 
-#### 5. Event Details
+### 5. Event Details
 ![Event Details](screenshots/event_detail.png)
 *Detailed view of event information and registration*
 
-#### 6. Create Event
+### 6. Create Event
 ![Create Event](screenshots/create_event.png)
 *Event creation form for club executives*
 
-#### 7. Members View
+### 7. Members View
 ![Members View](screenshots/members.png)
 *Club member listing with roles*
 
-#### 8. Executive Dashboard
+### 8. Executive Dashboard
 ![Executive Dashboard](screenshots/exec_dashboard.png)
 *Club executive control panel*
 
-#### 9. Asset Management
+### 9. Asset Management
 ![Asset Management](screenshots/asset_management.png)
 *Asset tracking and loan management system*
 
-#### 10. User Profile
+### 10. User Profile
 ![User Profile](screenshots/profile.png)
 *Student profile with personal information and skills*
 
@@ -461,15 +459,16 @@ IntelliClub/
 ## 🎓 Contributors
 
 **Project Team:**
-- [Your Name] - Student ID
-- [Team Member 2] - Student ID
-- [Team Member 3] - Student ID
+- [Mehraj Mahmood] - 0152410011
+- [Rubaya Tabassum] - 0152410016
+- [Ariful Ekraj Hridoy] - 0152410013
+- [Nurul Labib Sayeedi] - 0152410045
 
 **Course Information:**
 - **Course**: CSE 3522 - Database Management Systems Laboratory
 - **Institution**: United International University
-- **Semester**: [Semester/Year]
-- **Instructor**: [Instructor Name]
+- **Semester**: [Fall 2025]
+- **Instructor**: [Farhan Anan Himu]
 
 ---
 
